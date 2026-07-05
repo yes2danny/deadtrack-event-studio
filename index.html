@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEADTRACK Event Studio</title>
+<!--
+  DEADTRACK Event Studio
+  Single-file, offline, Android-friendly authoring app.
+
+  What is saved:
+  - The writer's whole workspace is stored in this browser with localStorage.
+  - Event lore, design notes, connection notes, status, and tags stay in the app.
+  - Exported game JSON still matches data/events/README.md and is ignored safely
+    by Godot for the author-only fields it does not use.
+-->
+<style>
+  :root {
+    --bg: #0e1112;
+    --panel: #171c1f;
+    --panel-2: #20282b;
+    --inset: #101416;
+    --line: #425054;
+    --line-soft: #2c3639;
+    --ink: #f0e4d3;
+    --muted: #ad9982;
+    --faint: #786b5d;
+    --copper: #c67a35;
+    --copper-2: #e3a25d;
+    --rail: #83936c;
+    --bad: #dc6048;
+    --good: #65b798;
+    --warn: #e0b14f;
+    --shadow: rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+  }
+  button, input, textarea, select { font: inherit; }
+  button {
+    min-height: 42px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--panel-2);
+    color: var(--ink);
+    padding: 9px 12px;
+    cursor: pointer;
+  }
+  button:active { transform: translateY(1px); }
+  button.primary { background: #8a5529; border-color: var(--copper-2); color: #fff4e4; font-weight: 700; }
+  button.good { border-color: var(--good); color: #dffced; }
+  button.danger { border-color: var(--bad); color: #ffd8d0; }
+  button.ghost { background: transparent; }
+  button.small { min-height: 34px; padding: 6px 9px; font-size: 13px; }
+  input[type=text], input[type=number], textarea, select {
+    width: 100%;
+    min-height: 42px;
+    background: var(--inset);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px;
+  }
+  textarea { min-height: 108px; resize: vertical; }
+  input:focus, textarea:focus, select:focus {
+    outline: 2px solid var(--copper);
+    outline-offset: 1px;
+  }
+  label {
+    display: block;
+    margin: 10px 0 4px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  label b { color: var(--ink); }
+  .app {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 10px 94px;
+  }
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    margin: 0 -10px 12px;
+    padding: 12px 12px 10px;
+    background: linear-gradient(#121719, #111516);
+    border-bottom: 1px solid var(--line-soft);
+    box-shadow: 0 2px 10px var(--shadow);
+  }
+  h1 {
+    margin: 0;
+    color: var(--copper-2);
+    font-size: 20px;
+    letter-spacing: 1px;
+  }
+  .subtitle {
+    margin: 2px 0 0;
+    color: var(--faint);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  .top-row, .row {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .toolbar button { white-space: nowrap; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .panel-title {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .panel-title h2 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--copper-2);
+  }
+  .hint { color: var(--faint); font-size: 12px; }
+  .muted { color: var(--muted); }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--inset);
+  }
+  .cards { display: grid; gap: 8px; }
+  .event-card {
+    border: 1px solid var(--line-soft);
+    border-left: 4px solid var(--rail);
+    border-radius: 7px;
+    padding: 10px;
+    background: var(--panel-2);
+  }
+  .event-card.active { border-left-color: var(--copper-2); box-shadow: 0 0 0 1px var(--copper); }
+  .event-card h3 {
+    margin: 0 0 3px;
+    font-size: 15px;
+  }
+  .event-card p {
+    margin: 5px 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .card-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .choice {
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--copper);
+    border-radius: 7px;
+    background: var(--inset);
+    padding: 10px;
+    margin: 12px 0;
+  }
+  .outcome {
+    border: 1px dashed var(--line);
+    border-radius: 7px;
+    background: var(--panel);
+    padding: 10px;
+    margin-top: 10px;
+  }
+  .choice-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .choice-head strong { color: var(--copper-2); }
+  details {
+    margin-top: 8px;
+    border-top: 1px solid var(--line-soft);
+    padding-top: 8px;
+  }
+  summary { color: var(--muted); cursor: pointer; }
+  .check-line {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 10px;
+    color: var(--muted);
+  }
+  .check-line input { width: 22px; height: 22px; }
+  .status-line {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    min-height: 28px;
+  }
+  #problems { color: var(--bad); white-space: pre-line; font-size: 13px; }
+  #okmsg { color: var(--good); font-size: 13px; }
+  .link-item {
+    border: 1px solid var(--line-soft);
+    border-radius: 7px;
+    padding: 10px;
+    margin-bottom: 8px;
+    background: var(--panel-2);
+  }
+  .link-item.bad { border-color: var(--bad); }
+  .link-item.warn { border-color: var(--warn); }
+  .link-item.good { border-color: var(--good); }
+  .bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--line-soft);
+    border-top: 1px solid var(--line);
+  }
+  .bottom-nav button {
+    min-width: 0;
+    border: 0;
+    border-radius: 0;
+    min-height: 58px;
+    background: var(--panel);
+    color: var(--muted);
+    font-size: 12px;
+    padding: 6px 4px;
+  }
+  .bottom-nav button.active {
+    color: var(--ink);
+    background: #27221d;
+    box-shadow: inset 0 3px 0 var(--copper-2);
+  }
+  .modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: flex-end;
+    background: rgba(0,0,0,.65);
+    z-index: 20;
+  }
+  .modal.active { display: flex; }
+  .modal-card {
+    width: 100%;
+    max-width: 760px;
+    max-height: 88vh;
+    overflow: auto;
+    margin: 0 auto;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px 12px 0 0;
+    padding: 14px;
+  }
+  pre {
+    overflow: auto;
+    white-space: pre-wrap;
+    background: var(--inset);
+    border: 1px solid var(--line-soft);
+    border-radius: 7px;
+    padding: 10px;
+    color: var(--ink);
+    font-size: 12px;
+  }
+  @media (min-width: 760px) {
+    .app { padding-bottom: 24px; }
+    .bottom-nav {
+      position: sticky;
+      top: 64px;
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 0 auto 12px;
+      width: min(980px, calc(100vw - 20px));
+      max-width: 980px;
+    }
+    .bottom-nav button { min-height: 46px; }
+    .modal { align-items: center; padding: 16px; }
+    .modal-card { border-radius: 12px; }
+  }
+</style>
+</head>
+<body>
+<noscript>
+  <div style="padding:12px;background:#311b14;color:#ffd8d0;font-family:system-ui">
+    This app needs JavaScript. If you opened it inside an email or file preview,
+    open the live website link in Safari/Chrome instead.
+  </div>
+</noscript>
+<div class="app">
+  <header>
+    <h1>DEADTRACK Event Studio</h1>
+    <p class="subtitle">Write events, connect them, save lore notes, then send Danny game-ready JSON.</p>
+    <div class="toolbar">
+      <button class="primary" onclick="newEvent()">New Event</button>
+      <button class="good" onclick="saveCurrent()">Save</button>
+      <button onclick="exportCurrentGameJson()">Game JSON</button>
+      <button onclick="exportArchive()">Backup</button>
+    </div>
+    <div class="status-line">
+      <span class="pill" id="active-pill">No event selected</span>
+      <span class="pill" id="saved-pill">Autosave ready</span>
+      <span id="problems"></span>
+      <span id="okmsg"></span>
+    </div>
+  </header>
+
+  <nav class="bottom-nav">
+    <button id="tab-events" onclick="showView('events')">Events</button>
+    <button id="tab-write" class="active" onclick="showView('write')">Write</button>
+    <button id="tab-links" onclick="showView('links')">Links</button>
+    <button id="tab-lore" onclick="showView('lore')">World</button>
+    <button id="tab-export" onclick="showView('export')">Send</button>
+  </nav>
+
+  <section id="view-events" class="view">
+    <div class="panel">
+      <div class="panel-title">
+        <h2>His Event Board</h2>
+        <span class="pill" id="event-count">0 events</span>
+      </div>
+      <div class="row">
+        <div>
+          <label>Search titles, notes, lore, tags</label>
+          <input type="text" id="search" placeholder="water tower, Wexler, faction..." oninput="renderEventList()">
+        </div>
+        <div>
+          <label>Filter by status</label>
+          <select id="status-filter" onchange="renderEventList()">
+            <option value="">All statuses</option>
+            <option value="idea">Idea</option>
+            <option value="draft">Draft</option>
+            <option value="ready">Ready for Danny</option>
+            <option value="needs_game_design">Needs game design</option>
+            <option value="needs_lore">Needs lore</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="cards" id="event-list"></div>
+  </section>
+
+  <section id="view-write" class="view active">
+    <div class="panel">
+      <div class="panel-title">
+        <h2>Start Here</h2>
+        <span class="pill">saved on this phone</span>
+      </div>
+      <p class="muted">Fill in the event number, title, player text, choices, and outcomes. Use <b>leads to event #</b> for a direct next page. Use <b>crew remembers tag</b> when a later event should react to this choice.</p>
+      <p class="hint">If taps do nothing, this is opened inside an email/file preview. Open the live website link in Safari or Chrome.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">
+        <h2>Event Draft</h2>
+        <button class="small danger" onclick="deleteCurrent()">Delete</button>
+      </div>
+      <div class="top-row">
+        <div>
+          <label><b>Event number</b> 1-899</label>
+          <input type="number" id="number" min="1" max="899" placeholder="2" oninput="touch()">
+        </div>
+        <div>
+          <label><b>Status</b></label>
+          <select id="status" onchange="touch()">
+            <option value="idea">Idea</option>
+            <option value="draft">Draft</option>
+            <option value="ready">Ready for Danny</option>
+            <option value="needs_game_design">Needs game design</option>
+            <option value="needs_lore">Needs lore</option>
+          </select>
+        </div>
+        <div>
+          <label><b>Where it appears</b></label>
+          <select id="appears_in" onchange="touch()">
+            <option value="neutral">Neutral beacon</option>
+            <option value="hostile">Hostile beacon</option>
+            <option value="hazard">Hazard beacon</option>
+            <option value="outpost">Faction outpost</option>
+            <option value="distress">Distress signal</option>
+            <option value="empty">Empty track</option>
+            <option value="follow_up">Follow-up only</option>
+          </select>
+        </div>
+      </div>
+
+      <label><b>Title</b></label>
+      <input type="text" id="title" placeholder="The Lantern Signal" oninput="touch()">
+
+      <label><b>Player-facing event text</b></label>
+      <textarea id="body" placeholder="What the player reads when the train arrives..." oninput="touch()"></textarea>
+
+      <div class="row">
+        <div>
+          <label>Tags for his own tracking</label>
+          <input type="text" id="tags" placeholder="wexler, water, outpost, moral-choice" oninput="touch()">
+        </div>
+        <div>
+          <label>Pick chance weight</label>
+          <input type="number" id="weight" min="1" max="99" value="10" oninput="touch()">
+        </div>
+      </div>
+
+      <details>
+        <summary>Advanced game placement</summary>
+        <div class="row">
+          <div>
+            <label>Map label override</label>
+            <select id="map_label" onchange="touch()">
+              <option value="">Use beacon type</option>
+              <option value="empty_track">Empty track</option>
+              <option value="enemy">Enemy</option>
+              <option value="settlement">Settlement</option>
+              <option value="trading_post">Trading post</option>
+              <option value="survivor_camp">Survivor camp</option>
+              <option value="hazard">Hazard</option>
+              <option value="outpost">Outpost</option>
+            </select>
+          </div>
+          <div>
+            <label>Only plays if crew remembers this tag</label>
+            <input type="text" id="only_if_remembered" placeholder="helped_wexler" oninput="touch()">
+          </div>
+          <div>
+            <label>Otherwise play event #</label>
+            <input type="number" id="otherwise" min="0" placeholder="0 means empty track" oninput="touch()">
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">
+        <h2>Choices and Outcomes</h2>
+        <button class="small" onclick="addChoice()">Add Choice</button>
+      </div>
+      <div class="hint">Use "leads to event #" for a direct next page. Use "crew remembers tag" plus "only plays if crew remembers" to connect events that appear later in the run.</div>
+      <div id="choices"></div>
+      <button onclick="addChoice()">Add Choice</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><h2>Lore and Design Notes</h2></div>
+      <label><b>Lore for this event</b></label>
+      <textarea id="lore" placeholder="Who lives here? What happened before the player arrived? What larger world fact does this reveal?" oninput="touch()"></textarea>
+      <label><b>What should happen in game</b></label>
+      <textarea id="design_notes" placeholder="Event 7 should probably damage hull, start a fight if they refuse, or unlock a later outpost response..." oninput="touch()"></textarea>
+      <label><b>Connection notes</b></label>
+      <textarea id="connection_notes" placeholder="Event 2 and 14 are connected because choosing the radio option in 2 marks helped_wexler; event 14 checks that tag. One outcome on 2 also leads to 16." oninput="touch()"></textarea>
+    </div>
+  </section>
+
+  <section id="view-links" class="view">
+    <div class="panel">
+      <div class="panel-title">
+        <h2>Connection Tracker</h2>
+        <button class="small" onclick="renderLinks()">Refresh</button>
+      </div>
+      <p class="hint">This checks the saved workspace, not just the currently open form. Missing targets and unused memory tags show up here before Danny imports anything.</p>
+    </div>
+    <div id="links-output"></div>
+  </section>
+
+  <section id="view-lore" class="view">
+    <div class="panel">
+      <div class="panel-title"><h2>Worldbuilding Notebook</h2></div>
+      <label><b>World lore</b></label>
+      <textarea id="world_lore" placeholder="Factions, places, rules of the rail-world, recurring characters..." oninput="touchWorld()"></textarea>
+      <label><b>Open questions for Danny</b></label>
+      <textarea id="world_questions" placeholder="Can this faction have a store? Should this event be before or after the first boss? What mechanics are allowed here?" oninput="touchWorld()"></textarea>
+      <label><b>Reusable names and ideas</b></label>
+      <textarea id="world_names" placeholder="Town names, survivor names, radio phrases, relics, train callsigns..." oninput="touchWorld()"></textarea>
+    </div>
+  </section>
+
+  <section id="view-export" class="view">
+    <div class="panel">
+      <div class="panel-title"><h2>Send to Danny</h2></div>
+      <div class="cards">
+        <button class="primary" onclick="exportCurrentGameJson()">Download current event game JSON</button>
+        <button onclick="copyCurrentGameJson()">Copy current event JSON</button>
+        <button onclick="emailCurrent()">Email current event</button>
+        <button onclick="downloadAllGameJson()">Download all game JSON files</button>
+        <button onclick="copyEventPack()">Copy all events as text pack</button>
+      </div>
+      <p class="hint">Game JSON files go into data/events/. The author-only lore and notes are included as ignored fields so Danny can read them, but the game only uses the gameplay fields.</p>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><h2>Backup or Move Phones</h2></div>
+      <div class="cards">
+        <button onclick="exportArchive()">Download full workspace backup</button>
+        <button onclick="document.getElementById('archive-file').click()">Import workspace or event JSON</button>
+        <input id="archive-file" type="file" accept=".json" style="display:none" onchange="importFile(this)">
+        <button class="danger" onclick="clearWorkspace()">Clear this browser workspace</button>
+      </div>
+      <p class="hint">The backup keeps event drafts, lore notebook, status, tags, and connection notes. Use it if Android clears browser storage or he changes phones.</p>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><h2>Preview</h2></div>
+      <pre id="json-preview">{}</pre>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <div class="panel-title">
+      <h2 id="modal-title">Message</h2>
+      <button class="small" onclick="closeModal()">Close</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const STORAGE_KEY = "deadtrack_event_studio_v2";
+const CREW = ["", "human_worker","human_scout","human_hauler","elf_ranger","elf_pale","elf_ash",
+  "roach_worker","roach_soldier","roach_forager","orc_raider","orc_brute","orc_elder",
+  "mechi_sentry","mechi_breaker","mechi_scout","dwarf_ranger","dwarf_smith","dwarf_elder"];
+const ROLES = ["", "scavenger","gunner","medic","engineer","raider","scout"];
+const SYSTEMS = ["", "engine","armory","med"];
+
+let state = loadState();
+let choiceSeq = 0;
+let saveTimer = null;
+let currentView = "write";
+
+function blankState() {
+  return {
+    version: 2,
+    activeNumber: null,
+    events: {},
+    world: { lore: "", questions: "", names: "" },
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function blankEvent(number) {
+  return {
+    number,
+    title: "",
+    appears_in: "neutral",
+    map_label: "",
+    weight: 10,
+    body: "",
+    choices: [],
+    only_if_remembered: "",
+    otherwise: 0,
+    status: "idea",
+    tags: "",
+    lore: "",
+    design_notes: "",
+    connection_notes: "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return blankState();
+    const parsed = JSON.parse(raw);
+    if (!parsed.events) return blankState();
+    parsed.world = parsed.world || { lore: "", questions: "", names: "" };
+    return parsed;
+  } catch (err) {
+    return blankState();
+  }
+}
+
+function persist() {
+  state.updatedAt = new Date().toISOString();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  document.getElementById("saved-pill").textContent = "Saved " + new Date().toLocaleTimeString();
+}
+
+function el(html) {
+  const t = document.createElement("template");
+  t.innerHTML = html.trim();
+  return t.content.firstChild;
+}
+
+function options(list, emptyLabel) {
+  return list.map(v => `<option value="${v}">${v === "" ? emptyLabel : v.replace(/_/g, " ")}</option>`).join("");
+}
+
+function showView(name) {
+  saveCurrent({quiet: true});
+  currentView = name;
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.querySelectorAll(".bottom-nav button").forEach(b => b.classList.remove("active"));
+  document.getElementById("view-" + name).classList.add("active");
+  document.getElementById("tab-" + name).classList.add("active");
+  if (name === "events") renderEventList();
+  if (name === "links") renderLinks();
+  if (name === "lore") loadWorldForm();
+  if (name === "export") updatePreview();
+}
+
+function nextFreeNumber() {
+  for (let i = 1; i <= 899; i++) {
+    if (!state.events[String(i)]) return i;
+  }
+  return 899;
+}
+
+function newEvent() {
+  saveCurrent({quiet: true});
+  const n = nextFreeNumber();
+  state.events[String(n)] = blankEvent(n);
+  state.activeNumber = n;
+  persist();
+  loadEvent(n);
+  showView("write");
+}
+
+function loadEvent(number) {
+  const event = state.events[String(number)];
+  if (!event) return;
+  state.activeNumber = number;
+  document.getElementById("number").value = event.number || "";
+  document.getElementById("status").value = event.status || "idea";
+  document.getElementById("appears_in").value = event.appears_in || "neutral";
+  document.getElementById("map_label").value = event.map_label || "";
+  document.getElementById("title").value = event.title || "";
+  document.getElementById("body").value = event.body || "";
+  document.getElementById("tags").value = event.tags || "";
+  document.getElementById("weight").value = event.weight || 10;
+  document.getElementById("only_if_remembered").value = event.only_if_remembered || "";
+  document.getElementById("otherwise").value = event.otherwise || "";
+  document.getElementById("lore").value = event.lore || "";
+  document.getElementById("design_notes").value = event.design_notes || "";
+  document.getElementById("connection_notes").value = event.connection_notes || "";
+  document.getElementById("choices").innerHTML = "";
+  choiceSeq = 0;
+  (event.choices || []).forEach(c => addChoice(c, true));
+  if (!(event.choices || []).length) addChoice(null, true);
+  setActivePill();
+  validateCurrent();
+  updatePreview();
+  persist();
+}
+
+function setActivePill() {
+  const e = currentEvent();
+  document.getElementById("active-pill").textContent = e ? `Editing #${e.number} ${e.title || "(untitled)"}` : "No event selected";
+}
+
+function currentEvent() {
+  if (!state.activeNumber) return null;
+  return state.events[String(state.activeNumber)] || null;
+}
+
+function collectCurrent() {
+  const number = parseInt(document.getElementById("number").value, 10) || 0;
+  const event = currentEvent() || blankEvent(number || nextFreeNumber());
+  event.number = number;
+  event.status = document.getElementById("status").value;
+  event.appears_in = document.getElementById("appears_in").value;
+  event.map_label = document.getElementById("map_label").value;
+  event.title = document.getElementById("title").value.trim();
+  event.body = document.getElementById("body").value.trim();
+  event.tags = document.getElementById("tags").value.trim();
+  event.weight = parseInt(document.getElementById("weight").value, 10) || 10;
+  event.only_if_remembered = cleanTag(document.getElementById("only_if_remembered").value);
+  event.otherwise = parseInt(document.getElementById("otherwise").value, 10) || 0;
+  event.lore = document.getElementById("lore").value.trim();
+  event.design_notes = document.getElementById("design_notes").value.trim();
+  event.connection_notes = document.getElementById("connection_notes").value.trim();
+  event.choices = [];
+  document.querySelectorAll(".choice").forEach(c => {
+    const choice = { text: c.querySelector(".c-text").value.trim(), outcomes: [] };
+    const needs = {};
+    ["scrap","fuel","ammo"].forEach(k => {
+      const v = parseInt(c.querySelector(".n-" + k).value, 10);
+      if (v > 0) needs[k] = v;
+    });
+    if (c.querySelector(".n-crew").value) needs.crew = c.querySelector(".n-crew").value;
+    if (c.querySelector(".n-system").value) needs.system = c.querySelector(".n-system").value;
+    if (Object.keys(needs).length) choice.needs = needs;
+    c.querySelectorAll(".outcome").forEach(o => {
+      const out = {
+        chance: parseInt(o.querySelector(".o-chance").value, 10) || 1,
+        result: o.querySelector(".o-result").value.trim()
+      };
+      ["scrap","fuel","ammo","hull"].forEach(k => {
+        const v = parseInt(o.querySelector(".o-" + k).value, 10);
+        if (v) out[k] = v;
+      });
+      if (o.querySelector(".o-fight").checked) out.fight = true;
+      if (o.querySelector(".o-survivor").value) out.survivor = o.querySelector(".o-survivor").value;
+      const remember = cleanTag(o.querySelector(".o-remember").value);
+      if (remember) out.remember = remember;
+      const leads = parseInt(o.querySelector(".o-leads").value, 10) || 0;
+      if (leads > 0) out.leads_to = leads;
+      out.game_note = o.querySelector(".o-game-note").value.trim();
+      choice.outcomes.push(out);
+    });
+    event.choices.push(choice);
+  });
+  event.updatedAt = new Date().toISOString();
+  return event;
+}
+
+function saveCurrent(opts = {}) {
+  if (!state.activeNumber && !document.getElementById("number")) return;
+  if (!state.activeNumber) return;
+  const oldKey = String(state.activeNumber);
+  const event = collectCurrent();
+  if (!event.number) return;
+  const newKey = String(event.number);
+  if (oldKey !== newKey) delete state.events[oldKey];
+  state.events[newKey] = event;
+  state.activeNumber = event.number;
+  persist();
+  setActivePill();
+  validateCurrent();
+  renderEventList();
+  if (!opts.quiet) flash("Saved", `Event #${event.number} is saved in this browser.`);
+}
+
+function touch() {
+  document.getElementById("saved-pill").textContent = "Unsaved changes";
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveCurrent({quiet: true}), 450);
+  validateCurrent();
+  updatePreview();
+}
+
+function touchWorld() {
+  state.world.lore = document.getElementById("world_lore").value;
+  state.world.questions = document.getElementById("world_questions").value;
+  state.world.names = document.getElementById("world_names").value;
+  persist();
+}
+
+function loadWorldForm() {
+  document.getElementById("world_lore").value = state.world.lore || "";
+  document.getElementById("world_questions").value = state.world.questions || "";
+  document.getElementById("world_names").value = state.world.names || "";
+}
+
+function cleanTag(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+}
+
+function addChoice(data, skipTouch) {
+  const id = "c" + (choiceSeq++);
+  const node = el(`
+    <div class="choice" id="${id}">
+      <div class="choice-head">
+        <strong>Choice</strong>
+        <button class="small danger" onclick="removeChoice('${id}')">Remove</button>
+      </div>
+      <label><b>Button text</b></label>
+      <input type="text" class="c-text" placeholder="Stop at the tower." oninput="touch()">
+      <details>
+        <summary>Requirements to pick this choice</summary>
+        <div class="row">
+          <div><label>Needs scrap at least</label><input type="number" class="n-scrap" min="0" placeholder="0" oninput="touch()"></div>
+          <div><label>Needs fuel at least</label><input type="number" class="n-fuel" min="0" placeholder="0" oninput="touch()"></div>
+          <div><label>Needs ammo at least</label><input type="number" class="n-ammo" min="0" placeholder="0" oninput="touch()"></div>
+        </div>
+        <div class="row">
+          <div><label>Needs crew role</label><select class="n-crew" onchange="touch()">${options(ROLES, "None")}</select></div>
+          <div><label>Needs working car</label><select class="n-system" onchange="touch()">${options(SYSTEMS, "None")}</select></div>
+        </div>
+      </details>
+      <div class="outcomes"></div>
+      <button class="small" onclick="addOutcome('${id}')">Add Outcome</button>
+    </div>`);
+  document.getElementById("choices").appendChild(node);
+  if (data) {
+    node.querySelector(".c-text").value = data.text || "";
+    const needs = data.needs || {};
+    node.querySelector(".n-scrap").value = needs.scrap || "";
+    node.querySelector(".n-fuel").value = needs.fuel || "";
+    node.querySelector(".n-ammo").value = needs.ammo || "";
+    node.querySelector(".n-crew").value = needs.crew || "";
+    node.querySelector(".n-system").value = needs.system || "";
+    (data.outcomes || []).forEach(o => addOutcome(id, o, true));
+  } else {
+    addOutcome(id, null, true);
+  }
+  if (!skipTouch) touch();
+}
+
+function removeChoice(id) {
+  const node = document.getElementById(id);
+  if (node) node.remove();
+  touch();
+}
+
+function addOutcome(choiceId, data, skipTouch) {
+  const uid = "f-" + choiceSeq + "-" + Math.random().toString(36).slice(2, 7);
+  const box = el(`
+    <div class="outcome">
+      <div class="choice-head">
+        <strong>Outcome</strong>
+        <button class="small danger" onclick="this.closest('.outcome').remove(); touch();">Remove</button>
+      </div>
+      <div class="row">
+        <div><label><b>Chance weight</b></label><input type="number" class="o-chance" value="1" min="1" max="99" oninput="touch()"></div>
+        <div><label>Leads to event #</label><input type="number" class="o-leads" min="0" placeholder="16" oninput="touch()"></div>
+        <div><label>Crew remembers tag</label><input type="text" class="o-remember" placeholder="helped_wexler" oninput="touch()"></div>
+      </div>
+      <label><b>Result text</b></label>
+      <textarea class="o-result" placeholder="What the player reads after choosing this..." oninput="touch()"></textarea>
+      <label>What should happen in game for this outcome</label>
+      <textarea class="o-game-note" placeholder="Example: this should start combat with a raider train, unlock event 14 later, or give a rare crew member." oninput="touch()"></textarea>
+      <div class="row">
+        <div><label>Scrap +/-</label><input type="number" class="o-scrap" placeholder="0" oninput="touch()"></div>
+        <div><label>Fuel +/-</label><input type="number" class="o-fuel" placeholder="0" oninput="touch()"></div>
+        <div><label>Ammo +/-</label><input type="number" class="o-ammo" placeholder="0" oninput="touch()"></div>
+        <div><label>Hull +/-</label><input type="number" class="o-hull" placeholder="0" oninput="touch()"></div>
+      </div>
+      <label class="check-line" for="${uid}">
+        <input type="checkbox" class="o-fight" id="${uid}" onchange="touch()"> A fight breaks out
+      </label>
+      <label>A survivor joins</label>
+      <select class="o-survivor" onchange="touch()">${options(CREW, "Nobody")}</select>
+    </div>`);
+  document.querySelector("#" + choiceId + " .outcomes").appendChild(box);
+  if (data) {
+    box.querySelector(".o-chance").value = data.chance || 1;
+    box.querySelector(".o-leads").value = data.leads_to || "";
+    box.querySelector(".o-remember").value = data.remember || "";
+    box.querySelector(".o-result").value = data.result || "";
+    box.querySelector(".o-game-note").value = data.game_note || "";
+    ["scrap","fuel","ammo","hull"].forEach(k => box.querySelector(".o-" + k).value = data[k] || "");
+    box.querySelector(".o-fight").checked = !!data.fight;
+    box.querySelector(".o-survivor").value = data.survivor || "";
+  }
+  if (!skipTouch) touch();
+}
+
+function eventProblems(event, allEvents = state.events) {
+  const problems = [];
+  if (!event.number || event.number < 1 || event.number > 899) problems.push("Event number must be 1-899.");
+  if (!event.title) problems.push("Needs a title.");
+  if (!event.body) problems.push("Needs player-facing event text.");
+  if (!event.choices || !event.choices.length) problems.push("Needs at least one choice.");
+  (event.choices || []).forEach((choice, ci) => {
+    if (!choice.text) problems.push(`Choice ${ci + 1} needs button text.`);
+    if (!choice.outcomes || !choice.outcomes.length) problems.push(`Choice ${ci + 1} needs at least one outcome.`);
+    (choice.outcomes || []).forEach((outcome, oi) => {
+      if (!outcome.result) problems.push(`Choice ${ci + 1}, outcome ${oi + 1} needs result text.`);
+      if (outcome.leads_to && !allEvents[String(outcome.leads_to)]) {
+        problems.push(`Choice ${ci + 1}, outcome ${oi + 1} leads to missing event #${outcome.leads_to}.`);
+      }
+    });
+  });
+  if (event.otherwise && !allEvents[String(event.otherwise)]) problems.push(`Fallback event #${event.otherwise} is missing.`);
+  return problems;
+}
+
+function validateCurrent() {
+  if (!state.activeNumber) return;
+  const event = collectCurrent();
+  const problems = eventProblems(event);
+  document.getElementById("problems").textContent = problems.slice(0, 2).join(" ");
+  document.getElementById("okmsg").textContent = problems.length ? "" : "Looks exportable.";
+  return problems;
+}
+
+function renderEventList() {
+  const q = (document.getElementById("search")?.value || "").toLowerCase();
+  const filter = document.getElementById("status-filter")?.value || "";
+  const list = document.getElementById("event-list");
+  if (!list) return;
+  list.innerHTML = "";
+  const events = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0));
+  document.getElementById("event-count").textContent = `${events.length} events`;
+  const filtered = events.filter(e => {
+    if (filter && e.status !== filter) return false;
+    const hay = [e.number, e.title, e.body, e.tags, e.lore, e.design_notes, e.connection_notes].join(" ").toLowerCase();
+    return !q || hay.includes(q);
+  });
+  if (!filtered.length) {
+    list.appendChild(el(`<div class="panel"><p class="muted">No saved events yet. Tap New Event.</p></div>`));
+    return;
+  }
+  filtered.forEach(e => {
+    const links = outgoingLinks(e).map(l => "#" + l.to).join(", ");
+    const problems = eventProblems(e);
+    const card = el(`
+      <article class="event-card ${state.activeNumber === e.number ? "active" : ""}">
+        <h3>#${e.number || "?"} ${escapeHtml(e.title || "(untitled)")}</h3>
+        <p>${escapeHtml((e.body || "").slice(0, 140))}${(e.body || "").length > 140 ? "..." : ""}</p>
+        <div class="status-line">
+          <span class="pill">${escapeHtml(e.status || "idea")}</span>
+          <span class="pill">${escapeHtml(e.appears_in || "neutral")}</span>
+          ${links ? `<span class="pill">leads ${escapeHtml(links)}</span>` : ""}
+          ${problems.length ? `<span class="pill" style="color:var(--bad)">needs work</span>` : `<span class="pill" style="color:var(--good)">valid</span>`}
+        </div>
+        <div class="card-actions">
+          <button class="small primary" onclick="loadEvent(${e.number}); showView('write')">Open</button>
+          <button class="small" onclick="duplicateEvent(${e.number})">Duplicate</button>
+          <button class="small" onclick="exportEventNumber(${e.number})">Game JSON</button>
+        </div>
+      </article>`);
+    list.appendChild(card);
+  });
+}
+
+function outgoingLinks(event) {
+  const links = [];
+  (event.choices || []).forEach((choice, ci) => {
+    (choice.outcomes || []).forEach((outcome, oi) => {
+      if (outcome.leads_to) links.push({ from: event.number, to: outcome.leads_to, choice: ci + 1, outcome: oi + 1, type: "leads_to" });
+    });
+  });
+  return links;
+}
+
+function renderLinks() {
+  saveCurrent({quiet: true});
+  const out = document.getElementById("links-output");
+  out.innerHTML = "";
+  const events = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0));
+  const setTags = {};
+  events.forEach(e => {
+    (e.choices || []).forEach((choice, ci) => {
+      (choice.outcomes || []).forEach((outcome, oi) => {
+        if (outcome.remember) {
+          setTags[outcome.remember] = setTags[outcome.remember] || [];
+          setTags[outcome.remember].push({event: e.number, choice: ci + 1, outcome: oi + 1});
+        }
+      });
+    });
+  });
+  const direct = [];
+  const missing = [];
+  events.forEach(e => {
+    outgoingLinks(e).forEach(link => {
+      if (state.events[String(link.to)]) direct.push(link);
+      else missing.push(link);
+    });
+  });
+  out.appendChild(sectionLinks("Direct story jumps", direct, link =>
+    `Event #${link.from}, choice ${link.choice}, outcome ${link.outcome} leads to event #${link.to}.`, "good"));
+  out.appendChild(sectionLinks("Missing direct targets", missing, link =>
+    `Event #${link.from} leads to event #${link.to}, but #${link.to} is not saved yet.`, "bad"));
+
+  const memoryRows = [];
+  const memoryProblems = [];
+  events.forEach(e => {
+    if (e.only_if_remembered) {
+      if (setTags[e.only_if_remembered]) {
+        setTags[e.only_if_remembered].forEach(src => {
+          memoryRows.push(`Event #${e.number} unlocks when event #${src.event}, choice ${src.choice}, outcome ${src.outcome} sets "${e.only_if_remembered}".`);
+        });
+      } else {
+        memoryProblems.push(`Event #${e.number} waits for "${e.only_if_remembered}", but no saved outcome sets it.`);
+      }
+    }
+  });
+  out.appendChild(textSection("Memory-gated connections", memoryRows, "good", "No memory-gated links yet."));
+  out.appendChild(textSection("Memory problems", memoryProblems, "bad", "No memory tag problems."));
+
+  const notes = events.filter(e => e.connection_notes).map(e => `#${e.number}: ${e.connection_notes}`);
+  out.appendChild(textSection("Writer connection notes", notes, "warn", "No freeform connection notes yet."));
+}
+
+function sectionLinks(title, rows, format, klass) {
+  const box = el(`<div class="panel"><div class="panel-title"><h2>${title}</h2><span class="pill">${rows.length}</span></div><div></div></div>`);
+  const body = box.lastChild;
+  if (!rows.length) body.appendChild(el(`<p class="muted">None.</p>`));
+  rows.forEach(r => body.appendChild(el(`<div class="link-item ${klass}">${escapeHtml(format(r))}</div>`)));
+  return box;
+}
+
+function textSection(title, rows, klass, emptyText) {
+  const box = el(`<div class="panel"><div class="panel-title"><h2>${title}</h2><span class="pill">${rows.length}</span></div><div></div></div>`);
+  const body = box.lastChild;
+  if (!rows.length) body.appendChild(el(`<p class="muted">${emptyText}</p>`));
+  rows.forEach(r => body.appendChild(el(`<div class="link-item ${klass}">${escapeHtml(r)}</div>`)));
+  return box;
+}
+
+function toGameJson(event, includeNotes = true) {
+  const data = {
+    number: event.number,
+    title: event.title,
+    appears_in: event.appears_in || "neutral",
+    weight: event.weight || 10,
+    body: event.body,
+    choices: (event.choices || []).map(choice => {
+      const c = { text: choice.text, outcomes: [] };
+      if (choice.needs && Object.keys(choice.needs).length) c.needs = choice.needs;
+      c.outcomes = (choice.outcomes || []).map(outcome => {
+        const o = {
+          chance: outcome.chance || 1,
+          result: outcome.result || ""
+        };
+        ["scrap","fuel","ammo","hull"].forEach(k => { if (outcome[k]) o[k] = outcome[k]; });
+        if (outcome.fight) o.fight = true;
+        if (outcome.survivor) o.survivor = outcome.survivor;
+        if (outcome.remember) o.remember = cleanTag(outcome.remember);
+        if (outcome.leads_to) o.leads_to = outcome.leads_to;
+        if (includeNotes && outcome.game_note) o.author_game_note = outcome.game_note;
+        return o;
+      });
+      return c;
+    })
+  };
+  if (event.map_label) data.map_label = event.map_label;
+  if (event.only_if_remembered) data.only_if_remembered = cleanTag(event.only_if_remembered);
+  if (event.otherwise) data.otherwise = event.otherwise;
+  if (includeNotes) {
+    if (event.status) data.author_status = event.status;
+    if (event.tags) data.author_tags = splitTags(event.tags);
+    if (event.lore) data.author_lore = event.lore;
+    if (event.design_notes) data.author_design_notes = event.design_notes;
+    if (event.connection_notes) data.author_connection_notes = event.connection_notes;
+  }
+  return data;
+}
+
+function splitTags(tags) {
+  return String(tags || "").split(",").map(t => t.trim()).filter(Boolean);
+}
+
+function filenameFor(event) {
+  const slug = (event.title || "untitled").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 32);
+  return `e${event.number}_${slug || "untitled"}.json`;
+}
+
+function exportCurrentGameJson() {
+  saveCurrent({quiet: true});
+  const e = currentEvent();
+  if (!e) return flash("No event", "Create or open an event first.");
+  const problems = eventProblems(e);
+  if (problems.length) return flash("Fix before export", problems.join("<br>"));
+  downloadFile(filenameFor(e), JSON.stringify(toGameJson(e, true), null, 2), "application/json");
+}
+
+function exportEventNumber(number) {
+  const e = state.events[String(number)];
+  if (!e) return;
+  const problems = eventProblems(e);
+  if (problems.length) return flash("Fix before export", problems.join("<br>"));
+  downloadFile(filenameFor(e), JSON.stringify(toGameJson(e, true), null, 2), "application/json");
+}
+
+function copyCurrentGameJson() {
+  saveCurrent({quiet: true});
+  const e = currentEvent();
+  if (!e) return;
+  navigator.clipboard.writeText(JSON.stringify(toGameJson(e, true), null, 2));
+  flash("Copied", "Current game JSON copied.");
+}
+
+function emailCurrent() {
+  saveCurrent({quiet: true});
+  const e = currentEvent();
+  if (!e) return;
+  const subject = encodeURIComponent(`DEADTRACK event ${e.number}: ${e.title || "untitled"}`);
+  const body = encodeURIComponent(`Save as ${filenameFor(e)} in data/events/\n\n` + JSON.stringify(toGameJson(e, true), null, 2));
+  location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
+function downloadAllGameJson() {
+  saveCurrent({quiet: true});
+  const events = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0));
+  const bad = events.flatMap(e => eventProblems(e).map(p => `#${e.number}: ${p}`));
+  if (bad.length) return flash("Fix before exporting all", bad.join("<br>"));
+  events.forEach((e, i) => {
+    setTimeout(() => downloadFile(filenameFor(e), JSON.stringify(toGameJson(e, true), null, 2), "application/json"), i * 250);
+  });
+}
+
+function copyEventPack() {
+  saveCurrent({quiet: true});
+  const text = Object.values(state.events)
+    .sort((a,b) => (a.number || 0) - (b.number || 0))
+    .map(e => `--- ${filenameFor(e)} ---\n${JSON.stringify(toGameJson(e, true), null, 2)}`)
+    .join("\n\n");
+  navigator.clipboard.writeText(text);
+  flash("Copied", "All events copied as a text pack.");
+}
+
+function exportArchive() {
+  saveCurrent({quiet: true});
+  downloadFile("deadtrack_event_studio_backup.json", JSON.stringify(state, null, 2), "application/json");
+}
+
+function importFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  file.text().then(text => {
+    let data;
+    try { data = JSON.parse(text); } catch (err) { return flash("Import failed", "That file is not valid JSON."); }
+    if (data.events && data.version) {
+      state = data;
+      state.world = state.world || { lore: "", questions: "", names: "" };
+      persist();
+      renderEventList();
+      flash("Imported", "Workspace backup imported.");
+      return;
+    }
+    const e = fromGameJson(data);
+    state.events[String(e.number)] = e;
+    state.activeNumber = e.number;
+    persist();
+    loadEvent(e.number);
+    showView("write");
+    flash("Imported", `Event #${e.number} imported.`);
+  }).finally(() => { input.value = ""; });
+}
+
+function fromGameJson(data) {
+  const e = blankEvent(parseInt(data.number, 10) || nextFreeNumber());
+  e.title = data.title || "";
+  e.appears_in = data.appears_in || "neutral";
+  e.map_label = data.map_label || "";
+  e.weight = data.weight || 10;
+  e.body = data.body || "";
+  e.only_if_remembered = data.only_if_remembered || "";
+  e.otherwise = data.otherwise || 0;
+  e.status = data.author_status || "draft";
+  e.tags = Array.isArray(data.author_tags) ? data.author_tags.join(", ") : "";
+  e.lore = data.author_lore || "";
+  e.design_notes = data.author_design_notes || "";
+  e.connection_notes = data.author_connection_notes || "";
+  e.choices = (data.choices || []).map(c => ({
+    text: c.text || "",
+    needs: c.needs || {},
+    outcomes: (c.outcomes || []).map(o => ({
+      chance: o.chance || 1,
+      result: o.result || "",
+      scrap: o.scrap || 0,
+      fuel: o.fuel || 0,
+      ammo: o.ammo || 0,
+      hull: o.hull || 0,
+      fight: !!o.fight,
+      survivor: o.survivor || "",
+      remember: o.remember || "",
+      leads_to: o.leads_to || 0,
+      game_note: o.author_game_note || ""
+    }))
+  }));
+  return e;
+}
+
+function duplicateEvent(number) {
+  const e = state.events[String(number)];
+  if (!e) return;
+  const copy = JSON.parse(JSON.stringify(e));
+  copy.number = nextFreeNumber();
+  copy.title = (copy.title || "Untitled") + " Copy";
+  copy.status = "idea";
+  copy.createdAt = new Date().toISOString();
+  copy.updatedAt = copy.createdAt;
+  state.events[String(copy.number)] = copy;
+  state.activeNumber = copy.number;
+  persist();
+  renderEventList();
+}
+
+function deleteCurrent() {
+  const e = currentEvent();
+  if (!e) return;
+  if (!confirm(`Delete event #${e.number}?`)) return;
+  delete state.events[String(e.number)];
+  state.activeNumber = null;
+  persist();
+  renderEventList();
+  showView("events");
+}
+
+function clearWorkspace() {
+  if (!confirm("Clear every saved event and note in this browser? Export a backup first if you need it.")) return;
+  state = blankState();
+  persist();
+  renderEventList();
+  showView("events");
+}
+
+function updatePreview() {
+  const pre = document.getElementById("json-preview");
+  if (!pre) return;
+  const e = state.activeNumber ? collectCurrent() : null;
+  pre.textContent = e ? JSON.stringify(toGameJson(e, true), null, 2) : "{}";
+}
+
+function downloadFile(name, text, type) {
+  const blob = new Blob([text], { type: type || "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function flash(title, html) {
+  document.getElementById("modal-title").textContent = title;
+  document.getElementById("modal-body").innerHTML = `<p>${html}</p>`;
+  document.getElementById("modal").classList.add("active");
+}
+
+function closeModal() {
+  document.getElementById("modal").classList.remove("active");
+}
+
+function escapeHtml(value) {
+  return String(value || "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+  }[ch]));
+}
+
+window.addEventListener("beforeunload", () => saveCurrent({quiet: true}));
+
+if (!Object.keys(state.events).length) {
+  const n = 1;
+  state.events[String(n)] = blankEvent(n);
+  state.activeNumber = n;
+  persist();
+}
+
+loadEvent(state.activeNumber || Number(Object.keys(state.events)[0]));
+renderEventList();
+</script>
+</body>
+</html>
