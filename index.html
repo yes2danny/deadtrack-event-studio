@@ -140,8 +140,8 @@
     font-size: 16px;
     color: var(--copper-2);
   }
-  .hint { color: var(--faint); font-size: 12px; }
-  .muted { color: var(--muted); }
+  .hint { color: var(--faint); font-size: 12px; overflow-wrap: anywhere; }
+  .muted { color: var(--muted); overflow-wrap: anywhere; }
   .pill {
     display: inline-flex;
     align-items: center;
@@ -323,7 +323,7 @@
     <div class="toolbar">
       <button class="primary" onclick="newEvent()">New Event</button>
       <button class="good" onclick="saveCurrent()">Save</button>
-      <button onclick="exportCurrentGameJson()">Game JSON</button>
+      <button onclick="exportCurrentGameJson()">Event File</button>
       <button onclick="exportArchive()">Backup</button>
     </div>
     <div class="status-line">
@@ -357,11 +357,11 @@
           <label>Filter by status</label>
           <select id="status-filter" onchange="renderEventList()">
             <option value="">All statuses</option>
-            <option value="idea">Idea</option>
-            <option value="draft">Draft</option>
-            <option value="ready">Ready for Day</option>
-            <option value="needs_game_design">Needs game design</option>
-            <option value="needs_lore">Needs lore</option>
+            <option value="canon">Canon</option>
+            <option value="maybe_canon">Maybe canon</option>
+            <option value="idea">Loose idea</option>
+            <option value="not_canon">Not canon / parking lot</option>
+            <option value="needs_day">Needs Day to decide</option>
           </select>
         </div>
       </div>
@@ -375,9 +375,9 @@
         <h2>Start Here</h2>
         <span class="pill">saved on this phone</span>
       </div>
-      <p class="muted">This is for writing DEADTRACK events. Start by filling in the event number, title, what the player reads, the choices, and what happens after each choice.</p>
-      <p class="muted"><b>Write</b> makes one event. <b>Saved</b> shows everything already written. <b>Connect</b> checks which events lead into other events. <b>Lore</b> is for worldbuilding notes. <b>Send</b> exports files for Day.</p>
-      <p class="muted">Use <b>leads to event #</b> when one event immediately continues into another. Use <b>crew remembers tag</b> when a choice should unlock or change a later event.</p>
+      <p class="muted">This is mostly an organizer. Give each idea an event number, mark if it is canon, write what happens, and connect it to other event numbers if needed.</p>
+      <p class="muted"><b>Write</b> makes one event. <b>Saved</b> shows all numbered events. <b>Connect</b> checks event-to-event links. <b>Lore</b> is for world notes. <b>Send</b> exports files for Day.</p>
+      <p class="muted">Ignore the advanced game math unless Day asks for it. Scrap, fuel, ammo, hull, and weight are optional dev/balance fields.</p>
       <p class="hint">If taps do nothing, this is opened inside an email/file preview. Open the live website link in Safari or Chrome.</p>
     </div>
 
@@ -392,25 +392,13 @@
           <input type="number" id="number" min="1" max="899" placeholder="2" oninput="touch()">
         </div>
         <div>
-          <label><b>Status</b></label>
+          <label><b>Canon status</b></label>
           <select id="status" onchange="touch()">
-            <option value="idea">Idea</option>
-            <option value="draft">Draft</option>
-            <option value="ready">Ready for Day</option>
-            <option value="needs_game_design">Needs game design</option>
-            <option value="needs_lore">Needs lore</option>
-          </select>
-        </div>
-        <div>
-          <label><b>Where it appears</b></label>
-          <select id="appears_in" onchange="touch()">
-            <option value="neutral">Neutral beacon</option>
-            <option value="hostile">Hostile beacon</option>
-            <option value="hazard">Hazard beacon</option>
-            <option value="outpost">Faction outpost</option>
-            <option value="distress">Distress signal</option>
-            <option value="empty">Empty track</option>
-            <option value="follow_up">Follow-up only</option>
+            <option value="canon">Canon</option>
+            <option value="maybe_canon">Maybe canon</option>
+            <option value="idea">Loose idea</option>
+            <option value="not_canon">Not canon / parking lot</option>
+            <option value="needs_day">Needs Day to decide</option>
           </select>
         </div>
       </div>
@@ -418,23 +406,36 @@
       <label><b>Title</b></label>
       <input type="text" id="title" placeholder="The Lantern Signal" oninput="touch()">
 
-      <label><b>Player-facing event text</b></label>
-      <textarea id="body" placeholder="What the player reads when the train arrives..." oninput="touch()"></textarea>
+      <label><b>What happens in this event?</b></label>
+      <textarea id="body" placeholder="Plain English is fine. Example: The train finds a town with a locked water tower. The people will trade the key if the crew helps repair the pump." oninput="touch()"></textarea>
 
       <div class="row">
         <div>
-          <label>Tags for his own tracking</label>
-          <input type="text" id="tags" placeholder="wexler, water, outpost, moral-choice" oninput="touch()">
-        </div>
-        <div>
-          <label>Pick chance weight</label>
-          <input type="number" id="weight" min="1" max="99" value="10" oninput="touch()">
+          <label>Tags / topic labels</label>
+          <input type="text" id="tags" placeholder="water, rail cult, outpost, Wexler, not canon yet" oninput="touch()">
         </div>
       </div>
 
       <details>
-        <summary>Advanced game placement</summary>
+        <summary>Advanced game placement (optional)</summary>
         <div class="row">
+          <div>
+            <label>Where it appears</label>
+            <select id="appears_in" onchange="touch()">
+              <option value="neutral">Neutral beacon</option>
+              <option value="hostile">Hostile beacon</option>
+              <option value="hazard">Hazard beacon</option>
+              <option value="outpost">Faction outpost</option>
+              <option value="distress">Distress signal</option>
+              <option value="empty">Empty track</option>
+              <option value="follow_up">Follow-up only</option>
+            </select>
+          </div>
+          <div>
+            <label>How often the game picks it</label>
+            <input type="number" id="weight" min="1" max="99" value="10" oninput="touch()">
+            <div class="hint">Leave this at 10. Higher means it appears more often in random runs.</div>
+          </div>
           <div>
             <label>Map label override</label>
             <select id="map_label" onchange="touch()">
@@ -462,10 +463,10 @@
 
     <div class="panel">
       <div class="panel-title">
-        <h2>Choices and Outcomes</h2>
+        <h2>Choices / Paths</h2>
         <button class="small" onclick="addChoice()">Add Choice</button>
       </div>
-      <div class="hint">Use "leads to event #" for a direct next page. Use "crew remembers tag" plus "only plays if crew remembers" to connect events that appear later in the run.</div>
+      <div class="hint">Optional. Use this when the player can choose different paths, or when this event should point to another event number.</div>
       <div id="choices"></div>
       <button onclick="addChoice()">Add Choice</button>
     </div>
@@ -474,8 +475,8 @@
       <div class="panel-title"><h2>Lore and Design Notes</h2></div>
       <label><b>Lore for this event</b></label>
       <textarea id="lore" placeholder="Who lives here? What happened before the player arrived? What larger world fact does this reveal?" oninput="touch()"></textarea>
-      <label><b>What should happen in game</b></label>
-      <textarea id="design_notes" placeholder="Event 7 should probably damage hull, start a fight if they refuse, or unlock a later outpost response..." oninput="touch()"></textarea>
+      <label><b>Notes for Day</b></label>
+      <textarea id="design_notes" placeholder="Anything Day should know. Example: This should feel important, but I do not know the exact reward yet. Maybe it should unlock event 14 later." oninput="touch()"></textarea>
       <label><b>Connection notes</b></label>
       <textarea id="connection_notes" placeholder="Event 2 and 14 are connected because choosing the radio option in 2 marks helped_wexler; event 14 checks that tag. One outcome on 2 also leads to 16." oninput="touch()"></textarea>
     </div>
@@ -508,13 +509,13 @@
     <div class="panel">
       <div class="panel-title"><h2>Send to Day</h2></div>
       <div class="cards">
-        <button class="primary" onclick="exportCurrentGameJson()">Download current event game JSON</button>
-        <button onclick="copyCurrentGameJson()">Copy current event JSON</button>
+        <button class="primary" onclick="exportCurrentGameJson()">Download current event file</button>
+        <button onclick="copyCurrentGameJson()">Copy current event text</button>
         <button onclick="emailCurrent()">Email current event</button>
-        <button onclick="downloadAllGameJson()">Download all game JSON files</button>
-        <button onclick="copyEventPack()">Copy all events as text pack</button>
+        <button onclick="downloadAllGameJson()">Download all event files</button>
+        <button onclick="copyEventPack()">Copy all events as text</button>
       </div>
-      <p class="hint">Send Day the game JSON files. They include your lore and notes, but the game only reads the gameplay parts.</p>
+      <p class="hint">Use this when you want to send your work to Day. The file includes your notes and links.</p>
     </div>
     <div class="panel">
       <div class="panel-title"><h2>Backup or Move Phones</h2></div>
@@ -526,10 +527,10 @@
       </div>
       <p class="hint">The backup keeps event drafts, lore notebook, status, tags, and connection notes. Use it if Android clears browser storage or he changes phones.</p>
     </div>
-    <div class="panel">
-      <div class="panel-title"><h2>Preview</h2></div>
+    <details class="panel">
+      <summary>Developer preview</summary>
       <pre id="json-preview">{}</pre>
-    </div>
+    </details>
   </section>
 </div>
 
@@ -786,10 +787,10 @@ function addChoice(data, skipTouch) {
         <strong>Choice</strong>
         <button class="small danger" onclick="removeChoice('${id}')">Remove</button>
       </div>
-      <label><b>Button text</b></label>
-      <input type="text" class="c-text" placeholder="Stop at the tower." oninput="touch()">
+      <label><b>Choice / path name</b></label>
+      <input type="text" class="c-text" placeholder="Help the town" oninput="touch()">
       <details>
-        <summary>Requirements to pick this choice</summary>
+        <summary>Advanced: game lock requirements</summary>
         <div class="row">
           <div><label>Needs scrap at least</label><input type="number" class="n-scrap" min="0" placeholder="0" oninput="touch()"></div>
           <div><label>Needs fuel at least</label><input type="number" class="n-fuel" min="0" placeholder="0" oninput="touch()"></div>
@@ -801,7 +802,7 @@ function addChoice(data, skipTouch) {
         </div>
       </details>
       <div class="outcomes"></div>
-      <button class="small" onclick="addOutcome('${id}')">Add Outcome</button>
+      <button class="small" onclick="addOutcome('${id}')">Add Result</button>
     </div>`);
   document.getElementById("choices").appendChild(node);
   if (data) {
@@ -830,29 +831,32 @@ function addOutcome(choiceId, data, skipTouch) {
   const box = el(`
     <div class="outcome">
       <div class="choice-head">
-        <strong>Outcome</strong>
+        <strong>Result</strong>
         <button class="small danger" onclick="this.closest('.outcome').remove(); touch();">Remove</button>
       </div>
       <div class="row">
-        <div><label><b>Chance weight</b></label><input type="number" class="o-chance" value="1" min="1" max="99" oninput="touch()"></div>
         <div><label>Leads to event #</label><input type="number" class="o-leads" min="0" placeholder="16" oninput="touch()"></div>
-        <div><label>Crew remembers tag</label><input type="text" class="o-remember" placeholder="helped_wexler" oninput="touch()"></div>
+        <div><label>Memory tag for later</label><input type="text" class="o-remember" placeholder="helped_water_tower" oninput="touch()"></div>
       </div>
-      <label><b>Result text</b></label>
-      <textarea class="o-result" placeholder="What the player reads after choosing this..." oninput="touch()"></textarea>
-      <label>What should happen in game for this outcome</label>
-      <textarea class="o-game-note" placeholder="Example: this should start combat with a raider train, unlock event 14 later, or give a rare crew member." oninput="touch()"></textarea>
-      <div class="row">
-        <div><label>Scrap +/-</label><input type="number" class="o-scrap" placeholder="0" oninput="touch()"></div>
-        <div><label>Fuel +/-</label><input type="number" class="o-fuel" placeholder="0" oninput="touch()"></div>
-        <div><label>Ammo +/-</label><input type="number" class="o-ammo" placeholder="0" oninput="touch()"></div>
-        <div><label>Hull +/-</label><input type="number" class="o-hull" placeholder="0" oninput="touch()"></div>
-      </div>
-      <label class="check-line" for="${uid}">
-        <input type="checkbox" class="o-fight" id="${uid}" onchange="touch()"> A fight breaks out
-      </label>
-      <label>A survivor joins</label>
-      <select class="o-survivor" onchange="touch()">${options(CREW, "Nobody")}</select>
+      <label><b>What happens after this choice?</b></label>
+      <textarea class="o-result" placeholder="Plain English result. Example: The town opens the water tower and gives the crew an old rail map." oninput="touch()"></textarea>
+      <label>Extra notes for Day</label>
+      <textarea class="o-game-note" placeholder="Optional. Example: This should unlock a later outpost event. No need to decide rewards." oninput="touch()"></textarea>
+      <details>
+        <summary>Advanced: game math (optional)</summary>
+        <div class="row">
+          <div><label>Chance weight</label><input type="number" class="o-chance" value="1" min="1" max="99" oninput="touch()"></div>
+          <div><label>Scrap +/-</label><input type="number" class="o-scrap" placeholder="0" oninput="touch()"></div>
+          <div><label>Fuel +/-</label><input type="number" class="o-fuel" placeholder="0" oninput="touch()"></div>
+          <div><label>Ammo +/-</label><input type="number" class="o-ammo" placeholder="0" oninput="touch()"></div>
+          <div><label>Hull +/-</label><input type="number" class="o-hull" placeholder="0" oninput="touch()"></div>
+        </div>
+        <label class="check-line" for="${uid}">
+          <input type="checkbox" class="o-fight" id="${uid}" onchange="touch()"> A fight breaks out
+        </label>
+        <label>A survivor joins</label>
+        <select class="o-survivor" onchange="touch()">${options(CREW, "Nobody")}</select>
+      </details>
     </div>`);
   document.querySelector("#" + choiceId + " .outcomes").appendChild(box);
   if (data) {
