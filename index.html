@@ -319,7 +319,7 @@
 <div class="app">
   <header>
     <h1>DEADTRACK Event Studio</h1>
-    <p class="subtitle">Write events, connect them, save lore notes, then send Danny game-ready JSON.</p>
+    <p class="subtitle">Write events, connect them, save lore notes, then send Day the finished files.</p>
     <div class="toolbar">
       <button class="primary" onclick="newEvent()">New Event</button>
       <button class="good" onclick="saveCurrent()">Save</button>
@@ -335,10 +335,10 @@
   </header>
 
   <nav class="bottom-nav">
-    <button id="tab-events" onclick="showView('events')">Events</button>
+    <button id="tab-events" onclick="showView('events')">Saved</button>
     <button id="tab-write" class="active" onclick="showView('write')">Write</button>
-    <button id="tab-links" onclick="showView('links')">Links</button>
-    <button id="tab-lore" onclick="showView('lore')">World</button>
+    <button id="tab-links" onclick="showView('links')">Connect</button>
+    <button id="tab-lore" onclick="showView('lore')">Lore</button>
     <button id="tab-export" onclick="showView('export')">Send</button>
   </nav>
 
@@ -359,7 +359,7 @@
             <option value="">All statuses</option>
             <option value="idea">Idea</option>
             <option value="draft">Draft</option>
-            <option value="ready">Ready for Danny</option>
+            <option value="ready">Ready for Day</option>
             <option value="needs_game_design">Needs game design</option>
             <option value="needs_lore">Needs lore</option>
           </select>
@@ -375,7 +375,9 @@
         <h2>Start Here</h2>
         <span class="pill">saved on this phone</span>
       </div>
-      <p class="muted">Fill in the event number, title, player text, choices, and outcomes. Use <b>leads to event #</b> for a direct next page. Use <b>crew remembers tag</b> when a later event should react to this choice.</p>
+      <p class="muted">This is for writing DEADTRACK events. Start by filling in the event number, title, what the player reads, the choices, and what happens after each choice.</p>
+      <p class="muted"><b>Write</b> makes one event. <b>Saved</b> shows everything already written. <b>Connect</b> checks which events lead into other events. <b>Lore</b> is for worldbuilding notes. <b>Send</b> exports files for Day.</p>
+      <p class="muted">Use <b>leads to event #</b> when one event immediately continues into another. Use <b>crew remembers tag</b> when a choice should unlock or change a later event.</p>
       <p class="hint">If taps do nothing, this is opened inside an email/file preview. Open the live website link in Safari or Chrome.</p>
     </div>
 
@@ -394,7 +396,7 @@
           <select id="status" onchange="touch()">
             <option value="idea">Idea</option>
             <option value="draft">Draft</option>
-            <option value="ready">Ready for Danny</option>
+            <option value="ready">Ready for Day</option>
             <option value="needs_game_design">Needs game design</option>
             <option value="needs_lore">Needs lore</option>
           </select>
@@ -485,7 +487,7 @@
         <h2>Connection Tracker</h2>
         <button class="small" onclick="renderLinks()">Refresh</button>
       </div>
-      <p class="hint">This checks the saved workspace, not just the currently open form. Missing targets and unused memory tags show up here before Danny imports anything.</p>
+      <p class="hint">This checks all saved events, not just the one open right now. It warns you if an event points to a missing event number or waits for a memory tag that nothing creates.</p>
     </div>
     <div id="links-output"></div>
   </section>
@@ -495,7 +497,7 @@
       <div class="panel-title"><h2>Worldbuilding Notebook</h2></div>
       <label><b>World lore</b></label>
       <textarea id="world_lore" placeholder="Factions, places, rules of the rail-world, recurring characters..." oninput="touchWorld()"></textarea>
-      <label><b>Open questions for Danny</b></label>
+      <label><b>Questions for Day</b></label>
       <textarea id="world_questions" placeholder="Can this faction have a store? Should this event be before or after the first boss? What mechanics are allowed here?" oninput="touchWorld()"></textarea>
       <label><b>Reusable names and ideas</b></label>
       <textarea id="world_names" placeholder="Town names, survivor names, radio phrases, relics, train callsigns..." oninput="touchWorld()"></textarea>
@@ -504,7 +506,7 @@
 
   <section id="view-export" class="view">
     <div class="panel">
-      <div class="panel-title"><h2>Send to Danny</h2></div>
+      <div class="panel-title"><h2>Send to Day</h2></div>
       <div class="cards">
         <button class="primary" onclick="exportCurrentGameJson()">Download current event game JSON</button>
         <button onclick="copyCurrentGameJson()">Copy current event JSON</button>
@@ -512,7 +514,7 @@
         <button onclick="downloadAllGameJson()">Download all game JSON files</button>
         <button onclick="copyEventPack()">Copy all events as text pack</button>
       </div>
-      <p class="hint">Game JSON files go into data/events/. The author-only lore and notes are included as ignored fields so Danny can read them, but the game only uses the gameplay fields.</p>
+      <p class="hint">Send Day the game JSON files. They include your lore and notes, but the game only reads the gameplay parts.</p>
     </div>
     <div class="panel">
       <div class="panel-title"><h2>Backup or Move Phones</h2></div>
