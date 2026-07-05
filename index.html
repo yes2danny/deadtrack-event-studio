@@ -323,7 +323,7 @@
     <div class="toolbar">
       <button class="primary" onclick="newEvent()">New Event</button>
       <button class="good" onclick="saveCurrent()">Save</button>
-      <button onclick="exportCurrentGameJson()">Event File</button>
+      <button onclick="shareAllEvents()">Send All</button>
       <button onclick="exportArchive()">Backup</button>
     </div>
     <div class="status-line">
@@ -507,26 +507,29 @@
 
   <section id="view-export" class="view">
     <div class="panel">
-      <div class="panel-title"><h2>Send to Day</h2></div>
+      <div class="panel-title"><h2>Send Everything to Day</h2></div>
+      <p class="muted">This sends <b>all saved events</b> at once. It does not send only the event currently open.</p>
       <div class="cards">
-        <button class="primary" onclick="exportCurrentGameJson()">Download current event file</button>
-        <button onclick="copyCurrentGameJson()">Copy current event text</button>
-        <button onclick="emailCurrent()">Email current event</button>
-        <button onclick="downloadAllGameJson()">Download all event files</button>
-        <button onclick="copyEventPack()">Copy all events as text</button>
+        <button class="primary" onclick="shareAllEvents()">Share Everything</button>
+        <button onclick="copyAllEventsPlain()">Copy Everything</button>
+        <button onclick="emailAllEventsPlain()">Open Email With Everything</button>
       </div>
-      <p class="hint">Use this when you want to send your work to Day. The file includes your notes and links.</p>
+      <p class="hint">On a phone, tap Share Everything and choose Mail, Messages, or whatever you use. If that does not work, tap Copy Everything and paste it to Day.</p>
     </div>
-    <div class="panel">
-      <div class="panel-title"><h2>Backup or Move Phones</h2></div>
+
+    <details class="panel">
+      <summary>Advanced: files and backups</summary>
       <div class="cards">
+        <button onclick="exportCurrentGameJson()">Download current event file</button>
+        <button onclick="copyCurrentGameJson()">Copy current event file text</button>
+        <button onclick="downloadAllGameJson()">Download all game files</button>
         <button onclick="exportArchive()">Download full workspace backup</button>
         <button onclick="document.getElementById('archive-file').click()">Import workspace or event JSON</button>
         <input id="archive-file" type="file" accept=".json" style="display:none" onchange="importFile(this)">
         <button class="danger" onclick="clearWorkspace()">Clear this browser workspace</button>
       </div>
-      <p class="hint">The backup keeps event drafts, lore notebook, status, tags, and connection notes. Use it if Android clears browser storage or he changes phones.</p>
-    </div>
+      <p class="hint">Use backup only if moving phones or saving a full copy of the workspace. Day usually just needs Share Everything or Copy Everything.</p>
+    </details>
     <details class="panel">
       <summary>Developer preview</summary>
       <pre id="json-preview">{}</pre>
@@ -1062,6 +1065,117 @@ function splitTags(tags) {
 function filenameFor(event) {
   const slug = (event.title || "untitled").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 32);
   return `e${event.number}_${slug || "untitled"}.json`;
+}
+
+function statusLabel(value) {
+  return {
+    canon: "Canon",
+    maybe_canon: "Maybe canon",
+    idea: "Loose idea",
+    not_canon: "Not canon / parking lot",
+    needs_day: "Needs Day to decide",
+    draft: "Draft",
+    ready: "Ready for Day",
+    needs_game_design: "Needs game design",
+    needs_lore: "Needs lore"
+  }[value] || (value || "Loose idea");
+}
+
+function plainEventText(event) {
+  const lines = [];
+  lines.push(`EVENT #${event.number || "?"}: ${event.title || "(untitled)"}`);
+  lines.push(`Status: ${statusLabel(event.status)}`);
+  if (event.tags) lines.push(`Tags: ${event.tags}`);
+  lines.push("");
+  lines.push("What happens:");
+  lines.push(event.body || "(not written yet)");
+  if ((event.choices || []).length) {
+    lines.push("");
+    lines.push("Choices / paths:");
+    (event.choices || []).forEach((choice, ci) => {
+      lines.push(`${ci + 1}. ${choice.text || "(unnamed choice)"}`);
+      (choice.outcomes || []).forEach((outcome, oi) => {
+        const bits = [];
+        if (outcome.leads_to) bits.push(`leads to event #${outcome.leads_to}`);
+        if (outcome.remember) bits.push(`memory tag: ${outcome.remember}`);
+        lines.push(`   Result ${oi + 1}: ${outcome.result || "(not written yet)"}`);
+        if (bits.length) lines.push(`   Link: ${bits.join("; ")}`);
+        if (outcome.game_note) lines.push(`   Note: ${outcome.game_note}`);
+      });
+    });
+  }
+  if (event.lore) {
+    lines.push("");
+    lines.push("Lore:");
+    lines.push(event.lore);
+  }
+  if (event.design_notes) {
+    lines.push("");
+    lines.push("Notes for Day:");
+    lines.push(event.design_notes);
+  }
+  if (event.connection_notes) {
+    lines.push("");
+    lines.push("Connection notes:");
+    lines.push(event.connection_notes);
+  }
+  return lines.join("\n");
+}
+
+function allEventsPlainText() {
+  saveCurrent({quiet: true});
+  const events = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0));
+  const lines = ["DEADTRACK EVENT NOTES", `Sent: ${new Date().toLocaleString()}`, ""];
+  if (state.world.lore || state.world.questions || state.world.names) {
+    lines.push("WORLD NOTES");
+    if (state.world.lore) lines.push(`Lore:\n${state.world.lore}`);
+    if (state.world.questions) lines.push(`Questions for Day:\n${state.world.questions}`);
+    if (state.world.names) lines.push(`Names / ideas:\n${state.world.names}`);
+    lines.push("");
+  }
+  if (!events.length) {
+    lines.push("No events saved yet.");
+  } else {
+    lines.push(...events.map(plainEventText).join("\n\n---\n\n").split("\n"));
+  }
+  return lines.join("\n");
+}
+
+async function copyText(text, okMessage) {
+  try {
+    await navigator.clipboard.writeText(text);
+    flash("Copied", okMessage || "Copied.");
+  } catch (err) {
+    flash("Copy this text", `<textarea style="width:100%;min-height:260px">${escapeHtml(text)}</textarea>`);
+  }
+}
+
+async function shareAllEvents() {
+  const text = allEventsPlainText();
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "DEADTRACK event notes", text });
+      return;
+    } catch (err) {
+      if (String(err && err.name) === "AbortError") return;
+    }
+  }
+  await copyText(text, "Everything is copied. Paste it to Day.");
+}
+
+async function copyAllEventsPlain() {
+  await copyText(allEventsPlainText(), "Everything is copied. Paste it to Day.");
+}
+
+function emailAllEventsPlain() {
+  const text = allEventsPlainText();
+  const subject = encodeURIComponent("DEADTRACK event notes");
+  const body = encodeURIComponent(text);
+  if (body.length > 7500) {
+    copyText(text, "Everything is copied. The email text is long, so paste it into your email manually.");
+    return;
+  }
+  location.href = `mailto:?subject=${subject}&body=${body}`;
 }
 
 function exportCurrentGameJson() {
