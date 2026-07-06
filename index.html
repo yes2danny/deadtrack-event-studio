@@ -501,21 +501,29 @@
       </div>
       <p class="muted">This is where he writes bigger world stuff that is not tied to one event number. It autosaves on this phone, and it is included when he uses <b>Share Everything</b>.</p>
       <label><b>Factions / groups</b></label>
+      <button class="small" onclick="clearLoreField('factions')">Clear factions</button>
       <textarea id="world_factions" placeholder="Example: The Iron Choir controls three stations and brands people with rail spikes. They think the old rail laws still matter." oninput="touchWorld()"></textarea>
       <label><b>People / cultures</b></label>
+      <button class="small" onclick="clearLoreField('people')">Clear people</button>
       <textarea id="world_people" placeholder="Example: The pump workers were enslaved by the Iron Choir after the water tower siege. Some still secretly mark safe routes for trains." oninput="touchWorld()"></textarea>
       <label><b>Places</b></label>
+      <button class="small" onclick="clearLoreField('places')">Clear places</button>
       <textarea id="world_places" placeholder="Example: Redglass Yard, a burned switching station where the tracks melted into red slag." oninput="touchWorld()"></textarea>
       <label><b>History / what happened</b></label>
+      <button class="small" onclick="clearLoreField('history')">Clear history</button>
       <textarea id="world_history" placeholder="Example: Ten years ago this town sold out a neighboring camp for fuel. Event 12 is where that comes back." oninput="touchWorld()"></textarea>
       <label><b>Loose lore notes</b></label>
+      <button class="small" onclick="clearLoreField('lore')">Clear loose notes</button>
       <textarea id="world_lore" placeholder="Any other worldbuilding, rules, recurring symbols, or background ideas." oninput="touchWorld()"></textarea>
       <label><b>Questions for Day</b></label>
+      <button class="small" onclick="clearLoreField('questions')">Clear questions</button>
       <textarea id="world_questions" placeholder="Can this faction have a store? Should this event be before or after the first boss? What mechanics are allowed here?" oninput="touchWorld()"></textarea>
       <label><b>Reusable names and ideas</b></label>
+      <button class="small" onclick="clearLoreField('names')">Clear names</button>
       <textarea id="world_names" placeholder="Town names, survivor names, radio phrases, relics, train callsigns..." oninput="touchWorld()"></textarea>
       <div class="status-line">
         <span class="pill" id="world-saved-pill">Lore autosaves here</span>
+        <button class="small danger" onclick="clearAllLore()">Clear all lore only</button>
       </div>
     </div>
   </section>
@@ -986,7 +994,7 @@ function renderEventList() {
         <div class="card-actions">
           <button class="small primary" onclick="loadEvent(${e.number}); showView('write')">Open</button>
           <button class="small" onclick="duplicateEvent(${e.number})">Duplicate</button>
-          <button class="small" onclick="exportEventNumber(${e.number})">Game JSON</button>
+          <button class="small danger" onclick="deleteEventNumber(${e.number})">Delete</button>
         </div>
       </article>`);
     list.appendChild(card);
@@ -1365,15 +1373,66 @@ function duplicateEvent(number) {
   renderEventList();
 }
 
+function deleteEventNumber(number) {
+  const event = state.events[String(number)];
+  if (!event) return;
+  const title = event.title || "(untitled)";
+  if (!confirm(`Delete event #${number}: ${title}?`)) return;
+  delete state.events[String(number)];
+  if (state.activeNumber === number) {
+    const remaining = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0));
+    state.activeNumber = remaining.length ? remaining[0].number : null;
+    if (state.activeNumber) loadEvent(state.activeNumber);
+  }
+  persist();
+  renderEventList();
+  renderLinks();
+}
+
 function deleteCurrent() {
   const e = currentEvent();
   if (!e) return;
-  if (!confirm(`Delete event #${e.number}?`)) return;
-  delete state.events[String(e.number)];
-  state.activeNumber = null;
-  persist();
-  renderEventList();
+  deleteEventNumber(e.number);
   showView("events");
+}
+
+function clearLoreField(field) {
+  state.world = normalizeWorld(state.world);
+  const ids = {
+    factions: "world_factions",
+    people: "world_people",
+    places: "world_places",
+    history: "world_history",
+    lore: "world_lore",
+    questions: "world_questions",
+    names: "world_names"
+  };
+  const labels = {
+    factions: "factions",
+    people: "people / cultures",
+    places: "places",
+    history: "history",
+    lore: "loose lore notes",
+    questions: "questions",
+    names: "names and ideas"
+  };
+  if (!ids[field]) return;
+  if (state.world[field] && !confirm(`Clear ${labels[field]} only?`)) return;
+  state.world[field] = "";
+  const input = document.getElementById(ids[field]);
+  if (input) input.value = "";
+  persist();
+  const pill = document.getElementById("world-saved-pill");
+  if (pill) pill.textContent = `Cleared ${labels[field]}`;
+}
+
+function clearAllLore() {
+  if (!confirm("Clear all lore notes only? Events will stay saved.")) return;
+  state.world = normalizeWorld({});
+  loadWorldForm();
+  persist();
+  const pill = document.getElementById("world-saved-pill");
+  if (pill) pill.textContent = "All lore cleared";
 }
 
 function clearWorkspace() {
