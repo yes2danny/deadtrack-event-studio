@@ -495,13 +495,28 @@
 
   <section id="view-lore" class="view">
     <div class="panel">
-      <div class="panel-title"><h2>Worldbuilding Notebook</h2></div>
-      <label><b>World lore</b></label>
-      <textarea id="world_lore" placeholder="Factions, places, rules of the rail-world, recurring characters..." oninput="touchWorld()"></textarea>
+      <div class="panel-title">
+        <h2>World / Faction Notes</h2>
+        <button class="small good" onclick="touchWorld(true)">Save Lore</button>
+      </div>
+      <p class="muted">This is where he writes bigger world stuff that is not tied to one event number. It autosaves on this phone, and it is included when he uses <b>Share Everything</b>.</p>
+      <label><b>Factions / groups</b></label>
+      <textarea id="world_factions" placeholder="Example: The Iron Choir controls three stations and brands people with rail spikes. They think the old rail laws still matter." oninput="touchWorld()"></textarea>
+      <label><b>People / cultures</b></label>
+      <textarea id="world_people" placeholder="Example: The pump workers were enslaved by the Iron Choir after the water tower siege. Some still secretly mark safe routes for trains." oninput="touchWorld()"></textarea>
+      <label><b>Places</b></label>
+      <textarea id="world_places" placeholder="Example: Redglass Yard, a burned switching station where the tracks melted into red slag." oninput="touchWorld()"></textarea>
+      <label><b>History / what happened</b></label>
+      <textarea id="world_history" placeholder="Example: Ten years ago this town sold out a neighboring camp for fuel. Event 12 is where that comes back." oninput="touchWorld()"></textarea>
+      <label><b>Loose lore notes</b></label>
+      <textarea id="world_lore" placeholder="Any other worldbuilding, rules, recurring symbols, or background ideas." oninput="touchWorld()"></textarea>
       <label><b>Questions for Day</b></label>
       <textarea id="world_questions" placeholder="Can this faction have a store? Should this event be before or after the first boss? What mechanics are allowed here?" oninput="touchWorld()"></textarea>
       <label><b>Reusable names and ideas</b></label>
       <textarea id="world_names" placeholder="Town names, survivor names, radio phrases, relics, train callsigns..." oninput="touchWorld()"></textarea>
+      <div class="status-line">
+        <span class="pill" id="world-saved-pill">Lore autosaves here</span>
+      </div>
     </div>
   </section>
 
@@ -567,7 +582,15 @@ function blankState() {
     version: 2,
     activeNumber: null,
     events: {},
-    world: { lore: "", questions: "", names: "" },
+    world: {
+      factions: "",
+      people: "",
+      places: "",
+      history: "",
+      lore: "",
+      questions: "",
+      names: ""
+    },
     updatedAt: new Date().toISOString()
   };
 }
@@ -599,11 +622,23 @@ function loadState() {
     if (!raw) return blankState();
     const parsed = JSON.parse(raw);
     if (!parsed.events) return blankState();
-    parsed.world = parsed.world || { lore: "", questions: "", names: "" };
+    parsed.world = normalizeWorld(parsed.world);
     return parsed;
   } catch (err) {
     return blankState();
   }
+}
+
+function normalizeWorld(world) {
+  return Object.assign({
+    factions: "",
+    people: "",
+    places: "",
+    history: "",
+    lore: "",
+    questions: "",
+    names: ""
+  }, world || {});
 }
 
 function persist() {
@@ -765,17 +800,31 @@ function touch() {
   updatePreview();
 }
 
-function touchWorld() {
+function touchWorld(manual) {
+  state.world = normalizeWorld(state.world);
+  state.world.factions = document.getElementById("world_factions").value;
+  state.world.people = document.getElementById("world_people").value;
+  state.world.places = document.getElementById("world_places").value;
+  state.world.history = document.getElementById("world_history").value;
   state.world.lore = document.getElementById("world_lore").value;
   state.world.questions = document.getElementById("world_questions").value;
   state.world.names = document.getElementById("world_names").value;
   persist();
+  const pill = document.getElementById("world-saved-pill");
+  if (pill) pill.textContent = manual ? "Lore saved" : "Lore autosaved";
 }
 
 function loadWorldForm() {
+  state.world = normalizeWorld(state.world);
+  document.getElementById("world_factions").value = state.world.factions || "";
+  document.getElementById("world_people").value = state.world.people || "";
+  document.getElementById("world_places").value = state.world.places || "";
+  document.getElementById("world_history").value = state.world.history || "";
   document.getElementById("world_lore").value = state.world.lore || "";
   document.getElementById("world_questions").value = state.world.questions || "";
   document.getElementById("world_names").value = state.world.names || "";
+  const pill = document.getElementById("world-saved-pill");
+  if (pill) pill.textContent = "Lore loaded from this phone";
 }
 
 function cleanTag(value) {
@@ -1126,9 +1175,15 @@ function allEventsPlainText() {
   saveCurrent({quiet: true});
   const events = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0));
   const lines = ["DEADTRACK EVENT NOTES", `Sent: ${new Date().toLocaleString()}`, ""];
-  if (state.world.lore || state.world.questions || state.world.names) {
+  state.world = normalizeWorld(state.world);
+  if (state.world.factions || state.world.people || state.world.places || state.world.history ||
+      state.world.lore || state.world.questions || state.world.names) {
     lines.push("WORLD NOTES");
-    if (state.world.lore) lines.push(`Lore:\n${state.world.lore}`);
+    if (state.world.factions) lines.push(`Factions / groups:\n${state.world.factions}`);
+    if (state.world.people) lines.push(`People / cultures:\n${state.world.people}`);
+    if (state.world.places) lines.push(`Places:\n${state.world.places}`);
+    if (state.world.history) lines.push(`History / what happened:\n${state.world.history}`);
+    if (state.world.lore) lines.push(`Loose lore:\n${state.world.lore}`);
     if (state.world.questions) lines.push(`Questions for Day:\n${state.world.questions}`);
     if (state.world.names) lines.push(`Names / ideas:\n${state.world.names}`);
     lines.push("");
