@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DEADTRACK Event Studio</title>
+<title>Project Blackbird Event Studio</title>
 <!--
-  DEADTRACK Event Studio
-  Single-file, offline, Android-friendly authoring app.
+  Project Blackbird Event Studio
+  Single-file, offline-friendly authoring app with an optional local game bridge.
 
   What is saved:
   - The writer's whole workspace is stored in this browser with localStorage.
@@ -53,6 +53,7 @@
     cursor: pointer;
   }
   button:active { transform: translateY(1px); }
+  button:disabled { cursor: not-allowed; opacity: .55; transform: none; }
   button.primary { background: #8a5529; border-color: var(--copper-2); color: #fff4e4; font-weight: 700; }
   button.good { border-color: var(--good); color: #dffced; }
   button.danger { border-color: var(--bad); color: #ffd8d0; }
@@ -154,6 +155,9 @@
     background: var(--inset);
   }
   .cards { display: grid; gap: 8px; }
+  .hidden { display: none !important; }
+  .game-panel { border-color: var(--good); }
+  .game-panel .panel-title h2 { color: var(--good); }
   .event-card {
     border: 1px solid var(--line-soft);
     border-left: 4px solid var(--rail);
@@ -318,40 +322,42 @@
 </noscript>
 <div class="app">
   <header>
-    <h1>DEADTRACK Event Studio</h1>
-    <p class="subtitle">Write events, connect them, save lore notes, then send Day the finished files.</p>
+    <h1>Project Blackbird Event Studio</h1>
+    <p class="subtitle">Write linked events, keep the story organized, and put finished files straight into the game.</p>
     <div class="toolbar">
       <button class="primary" onclick="newEvent()">New Event</button>
-      <button class="good" onclick="saveCurrent()">Save</button>
-      <button onclick="shareAllEvents()">Send All</button>
+      <button class="good" onclick="saveCurrent()">Save Draft</button>
+      <button class="primary hidden" id="sync-top" onclick="syncAllToGame()">Put Ready in Game</button>
+      <button onclick="shareAllEvents()">Share All</button>
       <button onclick="exportArchive()">Backup</button>
     </div>
     <div class="status-line">
       <span class="pill" id="active-pill">No event selected</span>
       <span class="pill" id="saved-pill">Autosave ready</span>
+      <span class="pill" id="game-pill">Checking game connection...</span>
       <span id="problems"></span>
       <span id="okmsg"></span>
     </div>
   </header>
 
   <nav class="bottom-nav">
-    <button id="tab-events" onclick="showView('events')">Saved</button>
-    <button id="tab-write" class="active" onclick="showView('write')">Write</button>
+    <button id="tab-events" class="active" onclick="showView('events')">Events</button>
+    <button id="tab-write" onclick="openWriteView()">Write</button>
     <button id="tab-links" onclick="showView('links')">Connect</button>
     <button id="tab-lore" onclick="showView('lore')">Lore</button>
     <button id="tab-export" onclick="showView('export')">Send</button>
   </nav>
 
-  <section id="view-events" class="view">
+  <section id="view-events" class="view active">
     <div class="panel">
       <div class="panel-title">
-        <h2>His Event Board</h2>
+        <h2>Event Board</h2>
         <span class="pill" id="event-count">0 events</span>
       </div>
       <div class="row">
         <div>
           <label>Search titles, notes, lore, tags</label>
-          <input type="text" id="search" placeholder="water tower, Wexler, faction..." oninput="renderEventList()">
+          <input type="text" id="search" placeholder="relay, courier, faction, navigation..." oninput="renderEventList()">
         </div>
         <div>
           <label>Filter by status</label>
@@ -361,7 +367,11 @@
             <option value="maybe_canon">Maybe canon</option>
             <option value="idea">Loose idea</option>
             <option value="not_canon">Not canon / parking lot</option>
-            <option value="needs_day">Needs Day to decide</option>
+            <option value="needs_day">Needs developer decision</option>
+            <option value="draft">Draft</option>
+            <option value="ready">Ready for game</option>
+            <option value="needs_game_design">Needs game design</option>
+            <option value="needs_lore">Needs lore</option>
           </select>
         </div>
       </div>
@@ -369,15 +379,15 @@
     <div class="cards" id="event-list"></div>
   </section>
 
-  <section id="view-write" class="view active">
+  <section id="view-write" class="view">
     <div class="panel">
       <div class="panel-title">
         <h2>Start Here</h2>
-        <span class="pill">saved on this phone</span>
+        <span class="pill">autosaved in this browser</span>
       </div>
-      <p class="muted">This is mostly an organizer. Give each idea an event number, mark if it is canon, write what happens, and connect it to other event numbers if needed.</p>
-      <p class="muted"><b>Write</b> makes one event. <b>Saved</b> shows all numbered events. <b>Connect</b> checks event-to-event links. <b>Lore</b> is for world notes. <b>Send</b> exports files for Day.</p>
-      <p class="muted">Ignore the advanced game math unless Day asks for it. Scrap, fuel, ammo, hull, and weight are optional dev/balance fields.</p>
+      <p class="muted">Give each idea a number, write the scene, and add the buttons the player can choose. Event Studio already speaks the exact JSON format the game loads.</p>
+      <p class="muted"><b>Events</b> is the dashboard. <b>Write</b> edits one event. <b>Connect</b> checks story links. <b>Lore</b> keeps world notes. <b>Send</b> shares or installs the finished files.</p>
+      <p class="muted">When the local launcher is connected, <b>Put in Game</b> writes events marked Canon or Ready for game into <code>data/events</code> and runs the real game check. Restart the game if it is already open.</p>
       <p class="hint">If taps do nothing, this is opened inside an email/file preview. Open the live website link in Safari or Chrome.</p>
     </div>
 
@@ -398,7 +408,11 @@
             <option value="maybe_canon">Maybe canon</option>
             <option value="idea">Loose idea</option>
             <option value="not_canon">Not canon / parking lot</option>
-            <option value="needs_day">Needs Day to decide</option>
+            <option value="needs_day">Needs developer decision</option>
+            <option value="draft">Draft</option>
+            <option value="ready">Ready for game</option>
+            <option value="needs_game_design">Needs game design</option>
+            <option value="needs_lore">Needs lore</option>
           </select>
         </div>
       </div>
@@ -407,12 +421,12 @@
       <input type="text" id="title" placeholder="The Lantern Signal" oninput="touch()">
 
       <label><b>What happens in this event?</b></label>
-      <textarea id="body" placeholder="Plain English is fine. Example: The train finds a town with a locked water tower. The people will trade the key if the crew helps repair the pump." oninput="touch()"></textarea>
+      <textarea id="body" placeholder="Plain English is fine. Example: A damaged courier is drifting beside a silent relay. Its crew offers a nav key if you restore the transmitter." oninput="touch()"></textarea>
 
       <div class="row">
         <div>
           <label>Tags / topic labels</label>
-          <input type="text" id="tags" placeholder="water, rail cult, outpost, Wexler, not canon yet" oninput="touch()">
+          <input type="text" id="tags" placeholder="courier, relay, faction, navigation, not canon yet" oninput="touch()">
         </div>
       </div>
 
@@ -421,15 +435,20 @@
         <div class="row">
           <div>
             <label>Where it appears</label>
-            <select id="appears_in" onchange="touch()">
+            <select id="appears_in" onchange="placementChanged()">
+              <option value="route">Route event (?)</option>
+              <option value="follow_up">Follow-up page only</option>
+              <optgroup label="Legacy pools (not placed by the current map)">
               <option value="neutral">Neutral beacon</option>
               <option value="hostile">Hostile beacon</option>
               <option value="hazard">Hazard beacon</option>
               <option value="outpost">Faction outpost</option>
               <option value="distress">Distress signal</option>
-              <option value="empty">Empty track</option>
-              <option value="follow_up">Follow-up only</option>
+              <option value="empty">Empty beacon</option>
+              </optgroup>
             </select>
+            <div class="hint">Use Route event for a random ? node. Use Follow-up page when another event links here.</div>
+            <div class="hint hidden" id="route-fuel-warning" style="color:var(--bad)">Route events cannot use fuel. Clear the highlighted Fuel box below before installing this event.</div>
           </div>
           <div>
             <label>How often the game picks it</label>
@@ -440,7 +459,7 @@
             <label>Map label override</label>
             <select id="map_label" onchange="touch()">
               <option value="">Use beacon type</option>
-              <option value="empty_track">Empty track</option>
+              <option value="empty_track">Empty beacon</option>
               <option value="enemy">Enemy</option>
               <option value="settlement">Settlement</option>
               <option value="trading_post">Trading post</option>
@@ -451,11 +470,11 @@
           </div>
           <div>
             <label>Only plays if crew remembers this tag</label>
-            <input type="text" id="only_if_remembered" placeholder="helped_wexler" oninput="touch()">
+            <input type="text" id="only_if_remembered" placeholder="helped_courier" oninput="touch()">
           </div>
           <div>
             <label>Otherwise play event #</label>
-            <input type="number" id="otherwise" min="0" placeholder="0 means empty track" oninput="touch()">
+            <input type="number" id="otherwise" min="0" list="event-number-options" placeholder="0 means default empty beacon" oninput="touch()">
           </div>
         </div>
       </details>
@@ -464,21 +483,30 @@
     <div class="panel">
       <div class="panel-title">
         <h2>Choices / Paths</h2>
-        <button class="small" onclick="addChoice()">Add Choice</button>
       </div>
-      <div class="hint">Optional. Use this when the player can choose different paths, or when this event should point to another event number.</div>
+      <div class="row">
+        <div>
+          <label><b>Number of choices</b></label>
+          <select id="choice-count" onchange="setChoiceCount(this.value)">
+            <option value="1">1 choice</option>
+            <option value="2">2 choices</option>
+            <option value="3">3 choices</option>
+            <option value="4">4 choices</option>
+          </select>
+        </div>
+        <div class="hint" style="align-self:end;padding-bottom:10px">Each choice is one button. A result can continue to another numbered event.</div>
+      </div>
       <div id="choices"></div>
-      <button onclick="addChoice()">Add Choice</button>
     </div>
 
     <div class="panel">
       <div class="panel-title"><h2>Lore and Design Notes</h2></div>
       <label><b>Lore for this event</b></label>
       <textarea id="lore" placeholder="Who lives here? What happened before the player arrived? What larger world fact does this reveal?" oninput="touch()"></textarea>
-      <label><b>Notes for Day</b></label>
-      <textarea id="design_notes" placeholder="Anything Day should know. Example: This should feel important, but I do not know the exact reward yet. Maybe it should unlock event 14 later." oninput="touch()"></textarea>
+      <label><b>Developer notes</b></label>
+      <textarea id="design_notes" placeholder="Anything the developer should know. Example: This should feel important, but I do not know the exact reward yet. Maybe it should unlock event 14 later." oninput="touch()"></textarea>
       <label><b>Connection notes</b></label>
-      <textarea id="connection_notes" placeholder="Event 2 and 14 are connected because choosing the radio option in 2 marks helped_wexler; event 14 checks that tag. One outcome on 2 also leads to 16." oninput="touch()"></textarea>
+      <textarea id="connection_notes" placeholder="Event 2 and 14 are connected because choosing the radio option in 2 remembers helped_courier; event 14 checks that tag. One result on 2 also leads to 16." oninput="touch()"></textarea>
     </div>
   </section>
 
@@ -499,28 +527,28 @@
         <h2>World / Faction Notes</h2>
         <button class="small good" onclick="touchWorld(true)">Save Lore</button>
       </div>
-      <p class="muted">This is where he writes bigger world stuff that is not tied to one event number. It autosaves on this phone, and it is included when he uses <b>Share Everything</b>.</p>
+      <p class="muted">Use this for worldbuilding that is not tied to one event number. It autosaves in this browser and is included with <b>Share Everything</b>.</p>
       <label><b>Factions / groups</b></label>
       <button class="small" onclick="clearLoreField('factions')">Clear factions</button>
-      <textarea id="world_factions" placeholder="Example: The Iron Choir controls three stations and brands people with rail spikes. They think the old rail laws still matter." oninput="touchWorld()"></textarea>
+      <textarea id="world_factions" placeholder="Example: The Far Lanterns maintain isolated relay stations and charge every ship for safe-route coordinates." oninput="touchWorld()"></textarea>
       <label><b>People / cultures</b></label>
       <button class="small" onclick="clearLoreField('people')">Clear people</button>
-      <textarea id="world_people" placeholder="Example: The pump workers were enslaved by the Iron Choir after the water tower siege. Some still secretly mark safe routes for trains." oninput="touchWorld()"></textarea>
+      <textarea id="world_people" placeholder="Example: Relay keepers trade information before supplies. Some still use old emergency transponder codes." oninput="touchWorld()"></textarea>
       <label><b>Places</b></label>
       <button class="small" onclick="clearLoreField('places')">Clear places</button>
-      <textarea id="world_places" placeholder="Example: Redglass Yard, a burned switching station where the tracks melted into red slag." oninput="touchWorld()"></textarea>
+      <textarea id="world_places" placeholder="Example: Cinder Reach, a navigation corridor lit by the remains of a broken star." oninput="touchWorld()"></textarea>
       <label><b>History / what happened</b></label>
       <button class="small" onclick="clearLoreField('history')">Clear history</button>
-      <textarea id="world_history" placeholder="Example: Ten years ago this town sold out a neighboring camp for fuel. Event 12 is where that comes back." oninput="touchWorld()"></textarea>
+      <textarea id="world_history" placeholder="Example: Ten years ago this station betrayed a refugee convoy. Event 12 is where that comes back." oninput="touchWorld()"></textarea>
       <label><b>Loose lore notes</b></label>
       <button class="small" onclick="clearLoreField('lore')">Clear loose notes</button>
       <textarea id="world_lore" placeholder="Any other worldbuilding, rules, recurring symbols, or background ideas." oninput="touchWorld()"></textarea>
-      <label><b>Questions for Day</b></label>
+      <label><b>Questions for the developer</b></label>
       <button class="small" onclick="clearLoreField('questions')">Clear questions</button>
       <textarea id="world_questions" placeholder="Can this faction have a store? Should this event be before or after the first boss? What mechanics are allowed here?" oninput="touchWorld()"></textarea>
       <label><b>Reusable names and ideas</b></label>
       <button class="small" onclick="clearLoreField('names')">Clear names</button>
-      <textarea id="world_names" placeholder="Town names, survivor names, radio phrases, relics, train callsigns..." oninput="touchWorld()"></textarea>
+      <textarea id="world_names" placeholder="Station names, crew names, radio phrases, relics, ship callsigns..." oninput="touchWorld()"></textarea>
       <div class="status-line">
         <span class="pill" id="world-saved-pill">Lore autosaves here</span>
         <button class="small danger" onclick="clearAllLore()">Clear all lore only</button>
@@ -529,15 +557,29 @@
   </section>
 
   <section id="view-export" class="view">
+    <div class="panel game-panel hidden" id="game-panel">
+      <div class="panel-title">
+        <h2>Put Ready Events in the Game</h2>
+        <span class="pill" id="game-panel-status">Local game connected</span>
+      </div>
+      <p class="muted">This mirrors every event marked <b>Canon</b> or <b>Ready for game</b> into <code>data/events</code>. Drafts, ideas, and parking-lot events stay out of the game. The files stay only if Godot's EventCheck passes.</p>
+      <div class="cards">
+        <button class="primary" id="sync-all-button" onclick="syncAllToGame()">Put Ready Events in Game</button>
+        <button onclick="loadGameEvents()">Load Existing Game Events</button>
+        <button onclick="validateGameEvents()">Check Game Events</button>
+      </div>
+      <p class="hint">The game loads event files when it starts. Restart the game after installing new events.</p>
+    </div>
+
     <div class="panel">
-      <div class="panel-title"><h2>Send Everything to Day</h2></div>
+      <div class="panel-title"><h2>Share Everything</h2></div>
       <p class="muted">This sends <b>all saved events</b> at once. It does not send only the event currently open.</p>
       <div class="cards">
         <button class="primary" onclick="shareAllEvents()">Share Everything</button>
         <button onclick="copyAllEventsPlain()">Copy Everything</button>
         <button onclick="emailAllEventsPlain()">Open Email With Everything</button>
       </div>
-      <p class="hint">On a phone, tap Share Everything and choose Mail, Messages, or whatever you use. If that does not work, tap Copy Everything and paste it to Day.</p>
+      <p class="hint">On a phone, tap Share Everything and choose Mail, Messages, or another app. If that does not work, tap Copy Everything and paste it where you need it.</p>
     </div>
 
     <details class="panel">
@@ -545,13 +587,13 @@
       <div class="cards">
         <button onclick="exportCurrentGameJson()">Download current event file</button>
         <button onclick="copyCurrentGameJson()">Copy current event file text</button>
-        <button onclick="downloadAllGameJson()">Download all game files</button>
+        <button onclick="downloadAllGameJson()">Download game-ready files</button>
         <button onclick="exportArchive()">Download full workspace backup</button>
         <button onclick="document.getElementById('archive-file').click()">Import workspace or event JSON</button>
         <input id="archive-file" type="file" accept=".json" style="display:none" onchange="importFile(this)">
         <button class="danger" onclick="clearWorkspace()">Clear this browser workspace</button>
       </div>
-      <p class="hint">Use backup only if moving phones or saving a full copy of the workspace. Day usually just needs Share Everything or Copy Everything.</p>
+      <p class="hint">Use backup when moving devices or saving a full copy of the workspace. Game files are separate JSON files, one per event.</p>
     </details>
     <details class="panel">
       <summary>Developer preview</summary>
@@ -559,6 +601,8 @@
     </details>
   </section>
 </div>
+
+<datalist id="event-number-options"></datalist>
 
 <div class="modal" id="modal">
   <div class="modal-card">
@@ -573,21 +617,24 @@
 <script>
 "use strict";
 
+// Keep the legacy storage key so existing browser workspaces open without a migration step.
 const STORAGE_KEY = "deadtrack_event_studio_v2";
 const CREW = ["", "human_worker","human_scout","human_hauler","elf_ranger","elf_pale","elf_ash",
   "roach_worker","roach_soldier","roach_forager","orc_raider","orc_brute","orc_elder",
   "mechi_sentry","mechi_breaker","mechi_scout","dwarf_ranger","dwarf_smith","dwarf_elder"];
 const ROLES = ["", "scavenger","gunner","medic","engineer","raider","scout"];
 const SYSTEMS = ["", "engine","armory","med"];
+const GAME_READY_STATUSES = new Set(["canon", "ready"]);
 
 let state = loadState();
 let choiceSeq = 0;
 let saveTimer = null;
-let currentView = "write";
+let currentView = "events";
+let gameBridge = { connected: false, godotAvailable: false };
 
 function blankState() {
   return {
-    version: 2,
+    version: 3,
     activeNumber: null,
     events: {},
     world: {
@@ -607,7 +654,7 @@ function blankEvent(number) {
   return {
     number,
     title: "",
-    appears_in: "neutral",
+    appears_in: "route",
     map_label: "",
     weight: 10,
     body: "",
@@ -630,11 +677,33 @@ function loadState() {
     if (!raw) return blankState();
     const parsed = JSON.parse(raw);
     if (!parsed.events) return blankState();
+    parsed.version = 3;
     parsed.world = normalizeWorld(parsed.world);
+    Object.keys(parsed.events).forEach(key => {
+      parsed.events[key] = normalizeStoredEvent(parsed.events[key]);
+    });
     return parsed;
   } catch (err) {
     return blankState();
   }
+}
+
+function normalizeStoredEvent(event) {
+  const normalized = Object.assign(blankEvent(parseInt(event?.number, 10) || 0), event || {});
+  normalized.choices = (normalized.choices || []).map(choice => {
+    const copy = Object.assign({text: "", outcomes: []}, choice || {});
+    copy.needs = Object.assign({}, copy.needs || {});
+    if (copy.needs.scrip == null && copy.needs.scrap != null) copy.needs.scrip = copy.needs.scrap;
+    delete copy.needs.scrap;
+    copy.outcomes = (copy.outcomes || []).map(outcome => {
+      const result = Object.assign({}, outcome || {});
+      if (result.scrip == null && result.scrap != null) result.scrip = result.scrap;
+      delete result.scrap;
+      return result;
+    });
+    return copy;
+  });
+  return normalized;
 }
 
 function normalizeWorld(world) {
@@ -666,7 +735,7 @@ function options(list, emptyLabel) {
 }
 
 function showView(name) {
-  saveCurrent({quiet: true});
+  if (!ensureCurrentSaved("leaving this event")) return false;
   currentView = name;
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   document.querySelectorAll(".bottom-nav button").forEach(b => b.classList.remove("active"));
@@ -676,18 +745,33 @@ function showView(name) {
   if (name === "links") renderLinks();
   if (name === "lore") loadWorldForm();
   if (name === "export") updatePreview();
+  return true;
+}
+
+function openWriteView() {
+  if (!state.activeNumber) {
+    newEvent();
+    return;
+  }
+  showView("write");
 }
 
 function nextFreeNumber() {
-  for (let i = 1; i <= 899; i++) {
-    if (!state.events[String(i)]) return i;
+  const used = Object.keys(state.events)
+    .map(Number)
+    .filter(number => Number.isInteger(number) && number >= 1 && number <= 899);
+  const next = (used.length ? Math.max(...used) : 0) + 1;
+  if (next <= 899) return next;
+  for (let number = 1; number <= 899; number++) {
+    if (!state.events[String(number)]) return number;
   }
-  return 899;
+  return null;
 }
 
 function newEvent() {
-  saveCurrent({quiet: true});
+  if (!ensureCurrentSaved("starting a new event")) return;
   const n = nextFreeNumber();
+  if (!n) return flash("No free event numbers", "The writer range 1-899 is full.");
   state.events[String(n)] = blankEvent(n);
   state.activeNumber = n;
   persist();
@@ -701,7 +785,7 @@ function loadEvent(number) {
   state.activeNumber = number;
   document.getElementById("number").value = event.number || "";
   document.getElementById("status").value = event.status || "idea";
-  document.getElementById("appears_in").value = event.appears_in || "neutral";
+  document.getElementById("appears_in").value = event.appears_in || "route";
   document.getElementById("map_label").value = event.map_label || "";
   document.getElementById("title").value = event.title || "";
   document.getElementById("body").value = event.body || "";
@@ -716,6 +800,8 @@ function loadEvent(number) {
   choiceSeq = 0;
   (event.choices || []).forEach(c => addChoice(c, true));
   if (!(event.choices || []).length) addChoice(null, true);
+  syncChoiceCount();
+  updatePlacementFields();
   setActivePill();
   validateCurrent();
   updatePreview();
@@ -734,7 +820,8 @@ function currentEvent() {
 
 function collectCurrent() {
   const number = parseInt(document.getElementById("number").value, 10) || 0;
-  const event = currentEvent() || blankEvent(number || nextFreeNumber());
+  const saved = currentEvent();
+  const event = saved ? JSON.parse(JSON.stringify(saved)) : blankEvent(number || nextFreeNumber());
   event.number = number;
   event.status = document.getElementById("status").value;
   event.appears_in = document.getElementById("appears_in").value;
@@ -752,7 +839,7 @@ function collectCurrent() {
   document.querySelectorAll(".choice").forEach(c => {
     const choice = { text: c.querySelector(".c-text").value.trim(), outcomes: [] };
     const needs = {};
-    ["scrap","fuel","ammo"].forEach(k => {
+    ["scrip","fuel","ammo"].forEach(k => {
       const v = parseInt(c.querySelector(".n-" + k).value, 10);
       if (v > 0) needs[k] = v;
     });
@@ -764,7 +851,7 @@ function collectCurrent() {
         chance: parseInt(o.querySelector(".o-chance").value, 10) || 1,
         result: o.querySelector(".o-result").value.trim()
       };
-      ["scrap","fuel","ammo","hull"].forEach(k => {
+      ["scrip","fuel","ammo","hull"].forEach(k => {
         const v = parseInt(o.querySelector(".o-" + k).value, 10);
         if (v) out[k] = v;
       });
@@ -784,12 +871,20 @@ function collectCurrent() {
 }
 
 function saveCurrent(opts = {}) {
-  if (!state.activeNumber && !document.getElementById("number")) return;
-  if (!state.activeNumber) return;
+  if (!state.activeNumber) return true;
   const oldKey = String(state.activeNumber);
   const event = collectCurrent();
-  if (!event.number) return;
+  if (!event.number || event.number < 1 || event.number > 899) {
+    if (!opts.quiet) flash("Invalid event number", "Event numbers must stay between 1 and 899.");
+    return false;
+  }
   const newKey = String(event.number);
+  if (oldKey !== newKey && state.events[newKey]) {
+    if (!confirm(`Event #${event.number} already exists. Replace it with this event?`)) {
+      document.getElementById("number").value = state.activeNumber;
+      return false;
+    }
+  }
   if (oldKey !== newKey) delete state.events[oldKey];
   state.events[newKey] = event;
   state.activeNumber = event.number;
@@ -797,15 +892,52 @@ function saveCurrent(opts = {}) {
   setActivePill();
   validateCurrent();
   renderEventList();
-  if (!opts.quiet) flash("Saved", `Event #${event.number} is saved in this browser.`);
+  if (!opts.quiet) flash("Draft saved", `Event #${event.number} is saved in this browser.`);
+  return true;
+}
+
+function ensureCurrentSaved(action) {
+  if (saveCurrent({quiet: true})) return true;
+  flash("Current draft not saved", `Fix its event number before ${action}.`);
+  return false;
 }
 
 function touch() {
   document.getElementById("saved-pill").textContent = "Unsaved changes";
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => saveCurrent({quiet: true}), 450);
+  updatePlacementFields();
   validateCurrent();
   updatePreview();
+}
+
+function placementChanged() {
+  updatePlacementFields();
+  touch();
+}
+
+function updatePlacementFields() {
+  const selector = document.getElementById("appears_in");
+  if (!selector) return;
+  const isRoute = selector.value === "route";
+  const hidesMapLabel = isRoute || selector.value === "follow_up";
+  const mapLabel = document.getElementById("map_label");
+  if (mapLabel) {
+    mapLabel.disabled = hidesMapLabel;
+    if (hidesMapLabel) mapLabel.value = "";
+  }
+  let hasRouteFuel = false;
+  document.querySelectorAll(".legacy-fuel").forEach(node => {
+    const input = node.querySelector("input");
+    const hasValue = Number(input?.value || 0) !== 0;
+    const incompatible = isRoute && hasValue;
+    hasRouteFuel = hasRouteFuel || incompatible;
+    node.style.display = isRoute && !hasValue ? "none" : "";
+    node.style.outline = incompatible ? "1px solid var(--bad)" : "";
+    node.style.borderRadius = incompatible ? "8px" : "";
+    node.style.padding = incompatible ? "6px" : "";
+  });
+  document.getElementById("route-fuel-warning")?.classList.toggle("hidden", !hasRouteFuel);
 }
 
 function touchWorld(manual) {
@@ -832,7 +964,7 @@ function loadWorldForm() {
   document.getElementById("world_questions").value = state.world.questions || "";
   document.getElementById("world_names").value = state.world.names || "";
   const pill = document.getElementById("world-saved-pill");
-  if (pill) pill.textContent = "Lore loaded from this phone";
+  if (pill) pill.textContent = "Lore loaded from this browser";
 }
 
 function cleanTag(value) {
@@ -840,6 +972,9 @@ function cleanTag(value) {
 }
 
 function addChoice(data, skipTouch) {
+  if (!data && !skipTouch && document.querySelectorAll(".choice").length >= 4) {
+    return flash("Four choices already", "Use the four existing buttons, or remove one before adding another.");
+  }
   const id = "c" + (choiceSeq++);
   const node = el(`
     <div class="choice" id="${id}">
@@ -847,18 +982,18 @@ function addChoice(data, skipTouch) {
         <strong>Choice</strong>
         <button class="small danger" onclick="removeChoice('${id}')">Remove</button>
       </div>
-      <label><b>Choice / path name</b></label>
-      <input type="text" class="c-text" placeholder="Help the town" oninput="touch()">
+      <label><b>Button text</b></label>
+      <input type="text" class="c-text" placeholder="Restore the transmitter" oninput="touch()">
       <details>
         <summary>Advanced: game lock requirements</summary>
         <div class="row">
-          <div><label>Needs scrap at least</label><input type="number" class="n-scrap" min="0" placeholder="0" oninput="touch()"></div>
-          <div><label>Needs fuel at least</label><input type="number" class="n-fuel" min="0" placeholder="0" oninput="touch()"></div>
+          <div><label>Needs credits at least</label><input type="number" class="n-scrip" min="0" placeholder="0" oninput="touch()"></div>
+          <div class="legacy-fuel"><label>Needs fuel at least</label><input type="number" class="n-fuel" min="0" placeholder="0" oninput="touch()"></div>
           <div><label>Needs ammo at least</label><input type="number" class="n-ammo" min="0" placeholder="0" oninput="touch()"></div>
         </div>
         <div class="row">
           <div><label>Needs crew role</label><select class="n-crew" onchange="touch()">${options(ROLES, "None")}</select></div>
-          <div><label>Needs working car</label><select class="n-system" onchange="touch()">${options(SYSTEMS, "None")}</select></div>
+          <div><label>Needs working system</label><select class="n-system" onchange="touch()">${options(SYSTEMS, "None")}</select></div>
         </div>
       </details>
       <div class="outcomes"></div>
@@ -868,7 +1003,7 @@ function addChoice(data, skipTouch) {
   if (data) {
     node.querySelector(".c-text").value = data.text || "";
     const needs = data.needs || {};
-    node.querySelector(".n-scrap").value = needs.scrap || "";
+    node.querySelector(".n-scrip").value = needs.scrip ?? needs.scrap ?? "";
     node.querySelector(".n-fuel").value = needs.fuel || "";
     node.querySelector(".n-ammo").value = needs.ammo || "";
     node.querySelector(".n-crew").value = needs.crew || "";
@@ -877,13 +1012,55 @@ function addChoice(data, skipTouch) {
   } else {
     addOutcome(id, null, true);
   }
+  updatePlacementFields();
+  syncChoiceCount();
   if (!skipTouch) touch();
 }
 
 function removeChoice(id) {
+  if (document.querySelectorAll(".choice").length <= 1) {
+    return flash("One choice required", "Every story event needs at least one player button.");
+  }
   const node = document.getElementById(id);
   if (node) node.remove();
+  syncChoiceCount();
   touch();
+}
+
+function choiceHasWriting(node) {
+  return Array.from(node.querySelectorAll("input, textarea, select")).some(field => {
+    if (field.type === "checkbox") return field.checked;
+    const value = String(field.value || "").trim();
+    if (field.classList.contains("o-chance")) return value !== "" && Number(value) !== 1;
+    return value !== "";
+  });
+}
+
+function setChoiceCount(value) {
+  const target = Math.max(1, Math.min(4, parseInt(value, 10) || 1));
+  let choices = Array.from(document.querySelectorAll(".choice"));
+  if (target < choices.length) {
+    const removed = choices.slice(target);
+    if (removed.some(choiceHasWriting) && !confirm(`Remove the last ${removed.length} written choice${removed.length === 1 ? "" : "s"}?`)) {
+      syncChoiceCount();
+      return;
+    }
+    removed.forEach(choice => choice.remove());
+  }
+  choices = Array.from(document.querySelectorAll(".choice"));
+  while (choices.length < target) {
+    addChoice(null, true);
+    choices = Array.from(document.querySelectorAll(".choice"));
+  }
+  syncChoiceCount();
+  touch();
+}
+
+function syncChoiceCount() {
+  const selector = document.getElementById("choice-count");
+  if (!selector) return;
+  const count = document.querySelectorAll(".choice").length;
+  selector.value = String(Math.max(1, Math.min(4, count || 1)));
 }
 
 function addOutcome(choiceId, data, skipTouch) {
@@ -895,19 +1072,19 @@ function addOutcome(choiceId, data, skipTouch) {
         <button class="small danger" onclick="this.closest('.outcome').remove(); touch();">Remove</button>
       </div>
       <div class="row">
-        <div><label>Leads to event #</label><input type="number" class="o-leads" min="0" placeholder="16" oninput="touch()"></div>
-        <div><label>Memory tag for later</label><input type="text" class="o-remember" placeholder="helped_water_tower" oninput="touch()"></div>
+        <div><label>Follow-up event #</label><input type="number" class="o-leads" min="0" max="899" list="event-number-options" placeholder="16" oninput="touch()"></div>
+        <div><label>Memory tag for later</label><input type="text" class="o-remember" placeholder="helped_courier" oninput="touch()"></div>
       </div>
       <label><b>What happens after this choice?</b></label>
-      <textarea class="o-result" placeholder="Plain English result. Example: The town opens the water tower and gives the crew an old rail map." oninput="touch()"></textarea>
-      <label>Extra notes for Day</label>
-      <textarea class="o-game-note" placeholder="Optional. Example: This should unlock a later outpost event. No need to decide rewards." oninput="touch()"></textarea>
+      <textarea class="o-result" placeholder="Plain English result. Example: The relay wakes and the courier transmits a safe route through the debris field." oninput="touch()"></textarea>
+      <label>Extra developer notes</label>
+      <textarea class="o-game-note" placeholder="Optional. Example: This should unlock a later station event. The exact reward can be tuned later." oninput="touch()"></textarea>
       <details>
         <summary>Advanced: game math (optional)</summary>
         <div class="row">
           <div><label>Chance weight</label><input type="number" class="o-chance" value="1" min="1" max="99" oninput="touch()"></div>
-          <div><label>Scrap +/-</label><input type="number" class="o-scrap" placeholder="0" oninput="touch()"></div>
-          <div><label>Fuel +/-</label><input type="number" class="o-fuel" placeholder="0" oninput="touch()"></div>
+          <div><label>Credits +/-</label><input type="number" class="o-scrip" placeholder="0" oninput="touch()"></div>
+          <div class="legacy-fuel"><label>Fuel +/-</label><input type="number" class="o-fuel" placeholder="0" oninput="touch()"></div>
           <div><label>Ammo +/-</label><input type="number" class="o-ammo" placeholder="0" oninput="touch()"></div>
           <div><label>Hull +/-</label><input type="number" class="o-hull" placeholder="0" oninput="touch()"></div>
         </div>
@@ -925,10 +1102,14 @@ function addOutcome(choiceId, data, skipTouch) {
     box.querySelector(".o-remember").value = data.remember || "";
     box.querySelector(".o-result").value = data.result || "";
     box.querySelector(".o-game-note").value = data.game_note || "";
-    ["scrap","fuel","ammo","hull"].forEach(k => box.querySelector(".o-" + k).value = data[k] || "");
+    ["scrip","fuel","ammo","hull"].forEach(k => {
+      const value = k === "scrip" ? (data.scrip ?? data.scrap) : data[k];
+      box.querySelector(".o-" + k).value = value || "";
+    });
     box.querySelector(".o-fight").checked = !!data.fight;
     box.querySelector(".o-survivor").value = data.survivor || "";
   }
+  updatePlacementFields();
   if (!skipTouch) touch();
 }
 
@@ -938,17 +1119,30 @@ function eventProblems(event, allEvents = state.events) {
   if (!event.title) problems.push("Needs a title.");
   if (!event.body) problems.push("Needs player-facing event text.");
   if (!event.choices || !event.choices.length) problems.push("Needs at least one choice.");
+  const currentRoutePage = (event.appears_in || "route") === "route";
+  if ((event.appears_in || "route") === "route" && event.map_label) problems.push("Route events always use the ? map label.");
   (event.choices || []).forEach((choice, ci) => {
     if (!choice.text) problems.push(`Choice ${ci + 1} needs button text.`);
     if (!choice.outcomes || !choice.outcomes.length) problems.push(`Choice ${ci + 1} needs at least one outcome.`);
+    if (currentRoutePage && choice.needs?.fuel) problems.push(`Choice ${ci + 1} cannot require fuel on the current route map.`);
     (choice.outcomes || []).forEach((outcome, oi) => {
       if (!outcome.result) problems.push(`Choice ${ci + 1}, outcome ${oi + 1} needs result text.`);
+      if (currentRoutePage && outcome.fuel) problems.push(`Choice ${ci + 1}, outcome ${oi + 1} cannot change fuel on the current route map.`);
+      if (outcome.fight && outcome.leads_to) problems.push(`Choice ${ci + 1}, outcome ${oi + 1} cannot both start a fight and open a follow-up event.`);
       if (outcome.leads_to && !allEvents[String(outcome.leads_to)]) {
         problems.push(`Choice ${ci + 1}, outcome ${oi + 1} leads to missing event #${outcome.leads_to}.`);
+      } else if (outcome.leads_to && GAME_READY_STATUSES.has(event.status) &&
+          !GAME_READY_STATUSES.has(allEvents[String(outcome.leads_to)].status)) {
+        problems.push(`Choice ${ci + 1}, outcome ${oi + 1} leads to event #${outcome.leads_to}, which is not Canon or Ready.`);
       }
     });
   });
-  if (event.otherwise && !allEvents[String(event.otherwise)]) problems.push(`Fallback event #${event.otherwise} is missing.`);
+  if (event.otherwise && !allEvents[String(event.otherwise)]) {
+    problems.push(`Fallback event #${event.otherwise} is missing.`);
+  } else if (event.otherwise && GAME_READY_STATUSES.has(event.status) &&
+      !GAME_READY_STATUSES.has(allEvents[String(event.otherwise)].status)) {
+    problems.push(`Fallback event #${event.otherwise} is not Canon or Ready.`);
+  }
   return problems;
 }
 
@@ -969,13 +1163,14 @@ function renderEventList() {
   list.innerHTML = "";
   const events = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0));
   document.getElementById("event-count").textContent = `${events.length} events`;
+  updateEventNumberOptions(events);
   const filtered = events.filter(e => {
     if (filter && e.status !== filter) return false;
     const hay = [e.number, e.title, e.body, e.tags, e.lore, e.design_notes, e.connection_notes].join(" ").toLowerCase();
     return !q || hay.includes(q);
   });
   if (!filtered.length) {
-    list.appendChild(el(`<div class="panel"><p class="muted">No saved events yet. Tap New Event.</p></div>`));
+    list.appendChild(el(`<div class="panel"><p class="muted">No events yet. Choose New Event to start one.</p></div>`));
     return;
   }
   filtered.forEach(e => {
@@ -986,19 +1181,29 @@ function renderEventList() {
         <h3>#${e.number || "?"} ${escapeHtml(e.title || "(untitled)")}</h3>
         <p>${escapeHtml((e.body || "").slice(0, 140))}${(e.body || "").length > 140 ? "..." : ""}</p>
         <div class="status-line">
-          <span class="pill">${escapeHtml(e.status || "idea")}</span>
-          <span class="pill">${escapeHtml(e.appears_in || "neutral")}</span>
+          <span class="pill">${escapeHtml(statusLabel(e.status))}</span>
+          <span class="pill">${escapeHtml(placementLabel(e.appears_in))}</span>
           ${links ? `<span class="pill">leads ${escapeHtml(links)}</span>` : ""}
           ${problems.length ? `<span class="pill" style="color:var(--bad)">needs work</span>` : `<span class="pill" style="color:var(--good)">valid</span>`}
         </div>
         <div class="card-actions">
-          <button class="small primary" onclick="loadEvent(${e.number}); showView('write')">Open</button>
+          <button class="small primary" onclick="editEvent(${e.number})">Edit</button>
           <button class="small" onclick="duplicateEvent(${e.number})">Duplicate</button>
           <button class="small danger" onclick="deleteEventNumber(${e.number})">Delete</button>
         </div>
       </article>`);
     list.appendChild(card);
   });
+}
+
+function updateEventNumberOptions(events = Object.values(state.events)) {
+  const list = document.getElementById("event-number-options");
+  if (!list) return;
+  list.innerHTML = events
+    .filter(event => event.number)
+    .sort((a,b) => a.number - b.number)
+    .map(event => `<option value="${event.number}">${escapeHtml(event.title || "Untitled")}</option>`)
+    .join("");
 }
 
 function outgoingLinks(event) {
@@ -1011,8 +1216,13 @@ function outgoingLinks(event) {
   return links;
 }
 
+function editEvent(number) {
+  if (!ensureCurrentSaved("opening another event")) return;
+  loadEvent(number);
+  showView("write");
+}
+
 function renderLinks() {
-  saveCurrent({quiet: true});
   const out = document.getElementById("links-output");
   out.innerHTML = "";
   const events = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0));
@@ -1040,10 +1250,20 @@ function renderLinks() {
   out.appendChild(sectionLinks("Missing direct targets", missing, link =>
     `Event #${link.from} leads to event #${link.to}, but #${link.to} is not saved yet.`, "bad"));
 
+  const notReady = direct.filter(link =>
+    GAME_READY_STATUSES.has(state.events[String(link.from)]?.status) &&
+    !GAME_READY_STATUSES.has(state.events[String(link.to)]?.status));
+  out.appendChild(sectionLinks("Game-ready links to parked drafts", notReady, link =>
+    `Ready event #${link.from} leads to #${link.to}, but #${link.to} is not Canon or Ready.`, "bad"));
+
   const memoryRows = [];
   const memoryProblems = [];
+  const directTargets = new Set(direct.map(link => Number(link.to)));
   events.forEach(e => {
     if (e.only_if_remembered) {
+      if (directTargets.has(e.number)) {
+        memoryProblems.push(`Event #${e.number} is a direct follow-up and has a memory gate. Direct follow-ups do not evaluate memory gates; branch before linking to it.`);
+      }
       if (setTags[e.only_if_remembered]) {
         setTags[e.only_if_remembered].forEach(src => {
           memoryRows.push(`Event #${e.number} unlocks when event #${src.event}, choice ${src.choice}, outcome ${src.outcome} sets "${e.only_if_remembered}".`);
@@ -1058,6 +1278,7 @@ function renderLinks() {
 
   const notes = events.filter(e => e.connection_notes).map(e => `#${e.number}: ${e.connection_notes}`);
   out.appendChild(textSection("Writer connection notes", notes, "warn", "No freeform connection notes yet."));
+  out.appendChild(textSection("Route chain problems", routeChainFuelProblems(events), "bad", "No hidden fuel in route stories."));
 }
 
 function sectionLinks(title, rows, format, klass) {
@@ -1077,21 +1298,33 @@ function textSection(title, rows, klass, emptyText) {
 }
 
 function toGameJson(event, includeNotes = true) {
+  const isRoute = (event.appears_in || "route") === "route";
+  const hidesMapLabel = isRoute || (event.appears_in || "route") === "follow_up";
   const data = {
     number: event.number,
     title: event.title,
-    appears_in: event.appears_in || "neutral",
+    appears_in: event.appears_in || "route",
     weight: event.weight || 10,
     body: event.body,
     choices: (event.choices || []).map(choice => {
       const c = { text: choice.text, outcomes: [] };
-      if (choice.needs && Object.keys(choice.needs).length) c.needs = choice.needs;
+      if (choice.needs && Object.keys(choice.needs).length) {
+        const needs = {...choice.needs};
+        if (needs.scrap != null && needs.scrip == null) needs.scrip = needs.scrap;
+        delete needs.scrap;
+        if (isRoute) delete needs.fuel;
+        if (Object.keys(needs).length) c.needs = needs;
+      }
       c.outcomes = (choice.outcomes || []).map(outcome => {
         const o = {
           chance: outcome.chance || 1,
           result: outcome.result || ""
         };
-        ["scrap","fuel","ammo","hull"].forEach(k => { if (outcome[k]) o[k] = outcome[k]; });
+        const effectKeys = isRoute ? ["scrip","ammo","hull"] : ["scrip","fuel","ammo","hull"];
+        effectKeys.forEach(k => {
+          const value = k === "scrip" ? (outcome.scrip ?? outcome.scrap) : outcome[k];
+          if (value) o[k] = value;
+        });
         if (outcome.fight) o.fight = true;
         if (outcome.survivor) o.survivor = outcome.survivor;
         if (outcome.remember) o.remember = cleanTag(outcome.remember);
@@ -1102,7 +1335,7 @@ function toGameJson(event, includeNotes = true) {
       return c;
     })
   };
-  if (event.map_label) data.map_label = event.map_label;
+  if (!hidesMapLabel && event.map_label) data.map_label = event.map_label;
   if (event.only_if_remembered) data.only_if_remembered = cleanTag(event.only_if_remembered);
   if (event.otherwise) data.otherwise = event.otherwise;
   if (includeNotes) {
@@ -1130,12 +1363,31 @@ function statusLabel(value) {
     maybe_canon: "Maybe canon",
     idea: "Loose idea",
     not_canon: "Not canon / parking lot",
-    needs_day: "Needs Day to decide",
+    needs_day: "Needs developer decision",
     draft: "Draft",
-    ready: "Ready for Day",
+    ready: "Ready for game",
     needs_game_design: "Needs game design",
     needs_lore: "Needs lore"
   }[value] || (value || "Loose idea");
+}
+
+function placementLabel(value) {
+  return {
+    route: "Route ?",
+    follow_up: "Follow-up only",
+    hostile: "Legacy hostile",
+    neutral: "Legacy neutral",
+    hazard: "Legacy hazard",
+    outpost: "Legacy outpost",
+    distress: "Legacy distress",
+    empty: "Legacy empty"
+  }[value || "route"] || String(value || "Route ?").replace(/_/g, " ");
+}
+
+function gameReadyEvents() {
+  return Object.values(state.events)
+    .filter(event => GAME_READY_STATUSES.has(event.status))
+    .sort((a,b) => (a.number || 0) - (b.number || 0));
 }
 
 function plainEventText(event) {
@@ -1168,7 +1420,7 @@ function plainEventText(event) {
   }
   if (event.design_notes) {
     lines.push("");
-    lines.push("Notes for Day:");
+    lines.push("Developer notes:");
     lines.push(event.design_notes);
   }
   if (event.connection_notes) {
@@ -1180,9 +1432,8 @@ function plainEventText(event) {
 }
 
 function allEventsPlainText() {
-  saveCurrent({quiet: true});
   const events = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0));
-  const lines = ["DEADTRACK EVENT NOTES", `Sent: ${new Date().toLocaleString()}`, ""];
+  const lines = ["PROJECT BLACKBIRD EVENT NOTES", `Sent: ${new Date().toLocaleString()}`, ""];
   state.world = normalizeWorld(state.world);
   if (state.world.factions || state.world.people || state.world.places || state.world.history ||
       state.world.lore || state.world.questions || state.world.names) {
@@ -1192,7 +1443,7 @@ function allEventsPlainText() {
     if (state.world.places) lines.push(`Places:\n${state.world.places}`);
     if (state.world.history) lines.push(`History / what happened:\n${state.world.history}`);
     if (state.world.lore) lines.push(`Loose lore:\n${state.world.lore}`);
-    if (state.world.questions) lines.push(`Questions for Day:\n${state.world.questions}`);
+    if (state.world.questions) lines.push(`Questions for the developer:\n${state.world.questions}`);
     if (state.world.names) lines.push(`Names / ideas:\n${state.world.names}`);
     lines.push("");
   }
@@ -1214,25 +1465,28 @@ async function copyText(text, okMessage) {
 }
 
 async function shareAllEvents() {
+  if (!ensureCurrentSaved("sharing everything")) return;
   const text = allEventsPlainText();
   if (navigator.share) {
     try {
-      await navigator.share({ title: "DEADTRACK event notes", text });
+      await navigator.share({ title: "Project Blackbird event notes", text });
       return;
     } catch (err) {
       if (String(err && err.name) === "AbortError") return;
     }
   }
-  await copyText(text, "Everything is copied. Paste it to Day.");
+  await copyText(text, "Everything is copied and ready to paste.");
 }
 
 async function copyAllEventsPlain() {
-  await copyText(allEventsPlainText(), "Everything is copied. Paste it to Day.");
+  if (!ensureCurrentSaved("copying everything")) return;
+  await copyText(allEventsPlainText(), "Everything is copied and ready to paste.");
 }
 
 function emailAllEventsPlain() {
+  if (!ensureCurrentSaved("emailing everything")) return;
   const text = allEventsPlainText();
-  const subject = encodeURIComponent("DEADTRACK event notes");
+  const subject = encodeURIComponent("Project Blackbird event notes");
   const body = encodeURIComponent(text);
   if (body.length > 7500) {
     copyText(text, "Everything is copied. The email text is long, so paste it into your email manually.");
@@ -1241,8 +1495,214 @@ function emailAllEventsPlain() {
   location.href = `mailto:?subject=${subject}&body=${body}`;
 }
 
+async function apiRequest(path, options = {}) {
+  const response = await fetch(path, {
+    ...options,
+    headers: {"Accept": "application/json", ...(options.headers || {})}
+  });
+  let data = {};
+  try { data = await response.json(); } catch (err) { data = {}; }
+  if (!response.ok) {
+    const error = new Error(data.error || `Local game connection returned ${response.status}.`);
+    error.data = data;
+    throw error;
+  }
+  return data;
+}
+
+async function detectGameBridge() {
+  try {
+    const status = await apiRequest("/api/status");
+    if (status.service !== "game-event-studio-local") throw new Error("Not the local Event Studio service.");
+    gameBridge = {
+      connected: true,
+      godotAvailable: !!status.godot_available,
+      eventsDirectory: status.events_directory || "data/events"
+    };
+  } catch (err) {
+    gameBridge = { connected: false, godotAvailable: false };
+  }
+  updateGameBridgeUi();
+}
+
+function updateGameBridgeUi() {
+  const pill = document.getElementById("game-pill");
+  const topButton = document.getElementById("sync-top");
+  const panel = document.getElementById("game-panel");
+  const panelStatus = document.getElementById("game-panel-status");
+  const syncButton = document.getElementById("sync-all-button");
+  if (!gameBridge.connected) {
+    pill.textContent = "Browser-only mode";
+    topButton.classList.add("hidden");
+    panel.classList.add("hidden");
+    return;
+  }
+  pill.textContent = gameBridge.godotAvailable ? "Game folder connected" : "Game connected, Godot missing";
+  topButton.classList.remove("hidden");
+  panel.classList.remove("hidden");
+  topButton.disabled = !gameBridge.godotAvailable;
+  syncButton.disabled = !gameBridge.godotAvailable;
+  panelStatus.textContent = gameBridge.godotAvailable ? "Godot check ready" : "Set GODOT_BIN, then reopen";
+}
+
+function routeChainFuelProblems(events) {
+  const byNumber = Object.fromEntries(events.map(event => [String(event.number), event]));
+  const problems = new Set();
+  events.filter(event => (event.appears_in || "route") === "route").forEach(root => {
+    const pending = [Number(root.number)];
+    const visited = new Set();
+    while (pending.length) {
+      const number = Number(pending.pop());
+      if (!number || visited.has(number)) continue;
+      visited.add(number);
+      const event = byNumber[String(number)];
+      if (!event) continue;
+      if (number !== Number(root.number)) {
+        const needsFuel = (event.choices || []).some(choice => Number(choice.needs?.fuel || 0) > 0);
+        const changesFuel = (event.choices || []).some(choice =>
+          (choice.outcomes || []).some(outcome => Number(outcome.fuel || 0) !== 0));
+        if (needsFuel || changesFuel) {
+          problems.add(`Route event #${root.number} reaches event #${number}, which uses fuel hidden by the current route map.`);
+        }
+      }
+      if (event.only_if_remembered && Number(event.otherwise || 0) > 0) pending.push(Number(event.otherwise));
+      (event.choices || []).forEach(choice => (choice.outcomes || []).forEach(outcome => {
+        if (Number(outcome.leads_to || 0) > 0) pending.push(Number(outcome.leads_to));
+      }));
+    }
+  });
+  return Array.from(problems);
+}
+
+function workspaceProblems(events) {
+  const byNumber = Object.fromEntries(events.map(event => [String(event.number), event]));
+  const problems = events.flatMap(event => eventProblems(event, byNumber).map(problem => `#${event.number}: ${problem}`));
+  const remembered = new Set();
+  const directTargets = new Set();
+  events.forEach(event => (event.choices || []).forEach(choice =>
+    (choice.outcomes || []).forEach(outcome => {
+      if (outcome.remember) remembered.add(cleanTag(outcome.remember));
+      if (outcome.leads_to) directTargets.add(Number(outcome.leads_to));
+    })));
+  events.forEach(event => {
+    if (event.only_if_remembered && directTargets.has(event.number)) {
+      problems.push(`#${event.number}: direct follow-up links do not evaluate memory gates. Branch before linking to this event.`);
+    }
+    if (event.only_if_remembered && !remembered.has(cleanTag(event.only_if_remembered))) {
+      problems.push(`#${event.number}: waits for memory "${event.only_if_remembered}", but no saved result creates it.`);
+    }
+  });
+  problems.push(...routeChainFuelProblems(events));
+  return problems;
+}
+
+async function syncAllToGame() {
+  if (!saveCurrent({quiet: true})) {
+    return flash("Current draft not saved", "Fix its event number before putting events in the game.");
+  }
+  if (!gameBridge.connected) {
+    return flash("Local launcher required", "Open <b>Open Event Studio.cmd</b> to write directly into the game. Browser-only mode can still download JSON files.");
+  }
+  if (!gameBridge.godotAvailable) {
+    return flash("Godot 4.7 not found", "Set the GODOT_BIN environment variable to the Godot console executable, then reopen Event Studio.");
+  }
+  const events = gameReadyEvents();
+  let projectEvents;
+  try { projectEvents = await apiRequest("/api/events"); }
+  catch (err) { return flash("Could not read game events", escapeHtml(err.message)); }
+  const gameFileProblems = projectEvents.problems || [];
+  const readyNumbers = new Set(events.map(event => Number(event.number)));
+  const removed = (projectEvents.events || []).filter(row => !readyNumbers.has(Number(row.event.number)));
+  if (!events.length && !removed.length && !gameFileProblems.length) {
+    return flash("No game-ready events", "Mark an event Canon or Ready for game first. Drafts and ideas stay in the organizer.");
+  }
+  const problems = workspaceProblems(events);
+  if (problems.length) return flash("Fix before installing", problems.slice(0, 12).map(escapeHtml).join("<br>"));
+  const removalText = removed.length
+    ? ` Game event${removed.length === 1 ? "" : "s"} ${removed.map(row => "#" + row.event.number).join(", ")} will be removed because they are not marked Canon or Ready in this browser.`
+    : "";
+  const repairText = gameFileProblems.length
+    ? `\n\n${gameFileProblems.length} existing game event file problem${gameFileProblems.length === 1 ? "" : "s"} will be repaired or removed if possible. If Godot still rejects the set, every touched file will be restored.\n- ${gameFileProblems.join("\n- ")}`
+    : "";
+  if (!confirm(`Put ${events.length} ready event${events.length === 1 ? "" : "s"} in the game? Existing writer events will mirror this Canon/Ready set.${removalText}${repairText}`)) return;
+
+  const topButton = document.getElementById("sync-top");
+  const syncButton = document.getElementById("sync-all-button");
+  topButton.disabled = true;
+  syncButton.disabled = true;
+  document.getElementById("game-pill").textContent = "Running game check...";
+  try {
+    const result = await apiRequest("/api/sync", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        events: events.map(event => toGameJson(event, true)),
+        replace_writer_set: true,
+        expected_revision: projectEvents.revision
+      })
+    });
+    document.getElementById("game-pill").textContent = "Saved and validated";
+    document.getElementById("game-panel-status").textContent = `${result.files.length} ready, ${result.removed_files.length} removed`;
+    const removedLine = result.removed_files.length ? `<br>${result.removed_files.length} old game event file${result.removed_files.length === 1 ? " was" : "s were"} removed.` : "";
+    flash("Game events are synced", `${result.files.length} ready event file${result.files.length === 1 ? " is" : "s are"} in <code>data/events</code>.${removedLine}<br>EventCheck passed.<br><br>Restart the game if it is already open.`);
+  } catch (err) {
+    document.getElementById("game-pill").textContent = "Game save failed";
+    const output = err.data?.validation?.output;
+    const rollbackFailed = err.data?.rolled_back === false;
+    const title = rollbackFailed ? "Game event files need attention" : "Nothing changed in the game";
+    const warning = rollbackFailed ? "<br><b>Rollback was incomplete. Inspect data/events before running the game.</b>" : "";
+    flash(title, `${escapeHtml(err.message)}${warning}${output ? `<pre>${escapeHtml(output)}</pre>` : ""}`);
+  } finally {
+    topButton.disabled = !gameBridge.godotAvailable;
+    syncButton.disabled = !gameBridge.godotAvailable;
+  }
+}
+
+async function loadGameEvents() {
+  if (!ensureCurrentSaved("loading game events")) return;
+  if (!gameBridge.connected) return flash("Local launcher required", "Open the local Event Studio launcher first.");
+  try {
+    const result = await apiRequest("/api/events");
+    if ((result.problems || []).length) {
+      return flash("Game event files need attention", `No browser drafts were changed.<br>${result.problems.map(escapeHtml).join("<br>")}`);
+    }
+    const rows = result.events || [];
+    if (!rows.length) return flash("No writer events in the game", "There are no numbered 1-899 event files in <code>data/events</code> yet.");
+    let imported;
+    try { imported = rows.map(row => fromGameJson(row.event)); }
+    catch (err) { return flash("Could not load game events", `No browser drafts were changed.<br>${escapeHtml(err.message)}`); }
+    const conflicts = imported.filter(event => state.events[String(event.number)]).map(event => event.number);
+    if (conflicts.length && !confirm(`Replace the browser drafts for event ${conflicts.map(number => "#" + number).join(", ")} with the game files?`)) return;
+    imported.forEach(event => {
+      state.events[String(event.number)] = event;
+    });
+    state.activeNumber = imported[0].number;
+    persist();
+    loadEvent(state.activeNumber);
+    renderEventList();
+    showView("events");
+    flash("Game events loaded", `${rows.length} event${rows.length === 1 ? " is" : "s are"} now in this browser workspace.`);
+  } catch (err) {
+    flash("Could not load game events", escapeHtml(err.message));
+  }
+}
+
+async function validateGameEvents() {
+  if (!gameBridge.connected) return flash("Local launcher required", "Open the local Event Studio launcher first.");
+  document.getElementById("game-pill").textContent = "Running game check...";
+  try {
+    const result = await apiRequest("/api/validate", {method: "POST"});
+    document.getElementById("game-pill").textContent = "Game events valid";
+    flash("Game check passed", `<pre>${escapeHtml(result.validation?.output || "EVENT_CHECK: ALL OK")}</pre>`);
+  } catch (err) {
+    document.getElementById("game-pill").textContent = "Game check failed";
+    const output = err.data?.validation?.output || err.message;
+    flash("Game check failed", `<pre>${escapeHtml(output)}</pre>`);
+  }
+}
+
 function exportCurrentGameJson() {
-  saveCurrent({quiet: true});
+  if (!saveCurrent({quiet: true})) return flash("Current draft not saved", "Fix its event number before exporting.");
   const e = currentEvent();
   if (!e) return flash("No event", "Create or open an event first.");
   const problems = eventProblems(e);
@@ -1251,6 +1711,7 @@ function exportCurrentGameJson() {
 }
 
 function exportEventNumber(number) {
+  if (!ensureCurrentSaved("exporting another event")) return;
   const e = state.events[String(number)];
   if (!e) return;
   const problems = eventProblems(e);
@@ -1258,63 +1719,94 @@ function exportEventNumber(number) {
   downloadFile(filenameFor(e), JSON.stringify(toGameJson(e, true), null, 2), "application/json");
 }
 
-function copyCurrentGameJson() {
-  saveCurrent({quiet: true});
+async function copyCurrentGameJson() {
+  if (!saveCurrent({quiet: true})) return flash("Current draft not saved", "Fix its event number before copying.");
   const e = currentEvent();
   if (!e) return;
-  navigator.clipboard.writeText(JSON.stringify(toGameJson(e, true), null, 2));
-  flash("Copied", "Current game JSON copied.");
+  const problems = eventProblems(e);
+  if (problems.length) return flash("Fix before copying", problems.map(escapeHtml).join("<br>"));
+  await copyText(JSON.stringify(toGameJson(e, true), null, 2), "Current game JSON copied.");
 }
 
 function emailCurrent() {
-  saveCurrent({quiet: true});
+  if (!saveCurrent({quiet: true})) return flash("Current draft not saved", "Fix its event number before sharing.");
   const e = currentEvent();
   if (!e) return;
-  const subject = encodeURIComponent(`DEADTRACK event ${e.number}: ${e.title || "untitled"}`);
+  const subject = encodeURIComponent(`Project Blackbird event ${e.number}: ${e.title || "untitled"}`);
   const body = encodeURIComponent(`Save as ${filenameFor(e)} in data/events/\n\n` + JSON.stringify(toGameJson(e, true), null, 2));
   location.href = `mailto:?subject=${subject}&body=${body}`;
 }
 
 function downloadAllGameJson() {
-  saveCurrent({quiet: true});
-  const events = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0));
-  const bad = events.flatMap(e => eventProblems(e).map(p => `#${e.number}: ${p}`));
+  if (!saveCurrent({quiet: true})) return flash("Current draft not saved", "Fix its event number before exporting.");
+  const events = gameReadyEvents();
+  if (!events.length) return flash("No game-ready events", "Mark an event Canon or Ready for game first.");
+  const bad = workspaceProblems(events);
   if (bad.length) return flash("Fix before exporting all", bad.join("<br>"));
   events.forEach((e, i) => {
     setTimeout(() => downloadFile(filenameFor(e), JSON.stringify(toGameJson(e, true), null, 2), "application/json"), i * 250);
   });
 }
 
-function copyEventPack() {
-  saveCurrent({quiet: true});
-  const text = Object.values(state.events)
-    .sort((a,b) => (a.number || 0) - (b.number || 0))
+async function copyEventPack() {
+  if (!saveCurrent({quiet: true})) return flash("Current draft not saved", "Fix its event number before copying.");
+  const events = gameReadyEvents();
+  if (!events.length) return flash("No game-ready events", "Mark an event Canon or Ready for game first.");
+  const bad = workspaceProblems(events);
+  if (bad.length) return flash("Fix before copying all", bad.slice(0, 12).map(escapeHtml).join("<br>"));
+  const text = events
     .map(e => `--- ${filenameFor(e)} ---\n${JSON.stringify(toGameJson(e, true), null, 2)}`)
     .join("\n\n");
-  navigator.clipboard.writeText(text);
-  flash("Copied", "All events copied as a text pack.");
+  await copyText(text, "All game event files are copied as a text pack.");
 }
 
 function exportArchive() {
-  saveCurrent({quiet: true});
-  downloadFile("deadtrack_event_studio_backup.json", JSON.stringify(state, null, 2), "application/json");
+  if (!saveCurrent({quiet: true})) return flash("Current draft not saved", "Fix its event number before backing up.");
+  downloadFile("project_blackbird_event_studio_backup.json", JSON.stringify(state, null, 2), "application/json");
 }
 
 function importFile(input) {
   const file = input.files[0];
   if (!file) return;
+  if (!ensureCurrentSaved("importing a file")) {
+    input.value = "";
+    return;
+  }
   file.text().then(text => {
     let data;
     try { data = JSON.parse(text); } catch (err) { return flash("Import failed", "That file is not valid JSON."); }
     if (data.events && data.version) {
-      state = data;
-      state.world = state.world || { lore: "", questions: "", names: "" };
+      let candidate;
+      try {
+        if (typeof data.events !== "object" || Array.isArray(data.events)) throw new Error("Workspace events must be an object.");
+        candidate = Object.assign(blankState(), data, {version: 3, events: {}, world: normalizeWorld(data.world)});
+        Object.values(data.events).forEach(rawEvent => {
+          const event = normalizeStoredEvent(rawEvent);
+          if (!Number.isInteger(Number(event.number)) || Number(event.number) < 1 || Number(event.number) > 899) {
+            throw new Error("Every workspace event needs a number from 1 to 899.");
+          }
+          const key = String(Number(event.number));
+          if (candidate.events[key]) throw new Error(`Event number ${event.number} appears more than once in this backup.`);
+          event.number = Number(event.number);
+          candidate.events[key] = event;
+        });
+        const imported = Object.values(candidate.events).sort((a,b) => (a.number || 0) - (b.number || 0));
+        candidate.activeNumber = candidate.events[String(data.activeNumber)] ? Number(data.activeNumber) : (imported[0]?.number || null);
+      } catch (err) {
+        return flash("Import failed", `No browser drafts were changed.<br>${escapeHtml(err.message)}`);
+      }
+      state = candidate;
       persist();
       renderEventList();
+      if (state.activeNumber) loadEvent(state.activeNumber);
+      showView("events");
       flash("Imported", "Workspace backup imported.");
       return;
     }
-    const e = fromGameJson(data);
+    let e;
+    try { e = fromGameJson(data); }
+    catch (err) { return flash("Import failed", escapeHtml(err.message)); }
+    if (state.events[String(e.number)] && !confirm(`Event #${e.number} already exists in this browser. Replace it?`)) return;
     state.events[String(e.number)] = e;
     state.activeNumber = e.number;
     persist();
@@ -1325,26 +1817,35 @@ function importFile(input) {
 }
 
 function fromGameJson(data) {
-  const e = blankEvent(parseInt(data.number, 10) || nextFreeNumber());
+  const number = parseInt(data?.number, 10);
+  if (!Number.isInteger(number) || number < 1 || number > 899) {
+    throw new Error("Game event JSON needs an event number from 1 to 899.");
+  }
+  const e = blankEvent(number);
   e.title = data.title || "";
-  e.appears_in = data.appears_in || "neutral";
+  e.appears_in = data.appears_in || "follow_up";
   e.map_label = data.map_label || "";
   e.weight = data.weight || 10;
   e.body = data.body || "";
   e.only_if_remembered = data.only_if_remembered || "";
   e.otherwise = data.otherwise || 0;
-  e.status = data.author_status || "draft";
+  e.status = data.author_status || "ready";
   e.tags = Array.isArray(data.author_tags) ? data.author_tags.join(", ") : "";
   e.lore = data.author_lore || "";
   e.design_notes = data.author_design_notes || "";
   e.connection_notes = data.author_connection_notes || "";
   e.choices = (data.choices || []).map(c => ({
     text: c.text || "",
-    needs: c.needs || {},
+    needs: (() => {
+      const needs = Object.assign({}, c.needs || {});
+      if (needs.scrip == null && needs.scrap != null) needs.scrip = needs.scrap;
+      delete needs.scrap;
+      return needs;
+    })(),
     outcomes: (c.outcomes || []).map(o => ({
       chance: o.chance || 1,
       result: o.result || "",
-      scrap: o.scrap || 0,
+      scrip: o.scrip ?? o.scrap ?? 0,
       fuel: o.fuel || 0,
       ammo: o.ammo || 0,
       hull: o.hull || 0,
@@ -1359,10 +1860,12 @@ function fromGameJson(data) {
 }
 
 function duplicateEvent(number) {
+  if (!ensureCurrentSaved("duplicating an event")) return;
   const e = state.events[String(number)];
   if (!e) return;
   const copy = JSON.parse(JSON.stringify(e));
   copy.number = nextFreeNumber();
+  if (!copy.number) return flash("No free event numbers", "The writer range 1-899 is full.");
   copy.title = (copy.title || "Untitled") + " Copy";
   copy.status = "idea";
   copy.createdAt = new Date().toISOString();
@@ -1370,30 +1873,32 @@ function duplicateEvent(number) {
   state.events[String(copy.number)] = copy;
   state.activeNumber = copy.number;
   persist();
-  renderEventList();
+  loadEvent(copy.number);
+  showView("write");
 }
 
 function deleteEventNumber(number) {
+  if (!ensureCurrentSaved("deleting an event")) return false;
   const event = state.events[String(number)];
-  if (!event) return;
+  if (!event) return false;
   const title = event.title || "(untitled)";
-  if (!confirm(`Delete event #${number}: ${title}?`)) return;
+  if (!confirm(`Delete event #${number}: ${title}?`)) return false;
   delete state.events[String(number)];
   if (state.activeNumber === number) {
     const remaining = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0));
     state.activeNumber = remaining.length ? remaining[0].number : null;
     if (state.activeNumber) loadEvent(state.activeNumber);
+    else setActivePill();
   }
   persist();
   renderEventList();
   renderLinks();
+  return true;
 }
 
 function deleteCurrent() {
-  const e = currentEvent();
-  if (!e) return;
-  deleteEventNumber(e.number);
-  showView("events");
+  if (!state.activeNumber) return;
+  if (deleteEventNumber(Number(state.activeNumber))) showView("events");
 }
 
 function clearLoreField(field) {
@@ -1439,6 +1944,7 @@ function clearWorkspace() {
   if (!confirm("Clear every saved event and note in this browser? Export a backup first if you need it.")) return;
   state = blankState();
   persist();
+  setActivePill();
   renderEventList();
   showView("events");
 }
@@ -1461,7 +1967,7 @@ function downloadFile(name, text, type) {
 
 function flash(title, html) {
   document.getElementById("modal-title").textContent = title;
-  document.getElementById("modal-body").innerHTML = `<p>${html}</p>`;
+  document.getElementById("modal-body").innerHTML = `<div>${html}</div>`;
   document.getElementById("modal").classList.add("active");
 }
 
@@ -1477,15 +1983,16 @@ function escapeHtml(value) {
 
 window.addEventListener("beforeunload", () => saveCurrent({quiet: true}));
 
-if (!Object.keys(state.events).length) {
-  const n = 1;
-  state.events[String(n)] = blankEvent(n);
-  state.activeNumber = n;
-  persist();
+if (Object.keys(state.events).length) {
+  const first = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0))[0];
+  const active = state.events[String(state.activeNumber)] ? state.activeNumber : first.number;
+  loadEvent(active);
+} else {
+  state.activeNumber = null;
+  setActivePill();
 }
-
-loadEvent(state.activeNumber || Number(Object.keys(state.events)[0]));
 renderEventList();
+detectGameBridge();
 </script>
 </body>
 </html>
