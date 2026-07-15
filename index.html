@@ -265,13 +265,13 @@
     bottom: 0;
     width: 100vw;
     z-index: 10;
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    display: flex;
     gap: 1px;
     background: var(--line-soft);
     border-top: 1px solid var(--line);
   }
   .bottom-nav button {
+    flex: 1 1 0;
     min-width: 0;
     border: 0;
     border-radius: 0;
@@ -346,41 +346,40 @@
     <h1>Project Blackbird Event Studio</h1>
     <p class="subtitle">Write one event at a time. Everything saves automatically.</p>
     <div class="toolbar">
-      <button class="primary" id="new-event-top" onclick="newEvent()">+ Create Event</button>
-      <button class="primary hidden" id="sync-top" onclick="syncAllToGame()">Put Ready in Game</button>
-      <button onclick="shareAllEvents()">Share All</button>
+      <button class="primary" id="new-event-top" onclick="newEvent()">+ New Event</button>
+      <button class="primary developer-only hidden" id="sync-top" onclick="syncAllToGame()">Put Ready in Game</button>
     </div>
     <div class="status-line">
       <span class="pill" id="active-pill">No event selected</span>
-      <span class="pill" id="saved-pill">Autosave ready</span>
-      <span class="pill" id="game-pill">Checking game connection...</span>
-      <span id="problems"></span>
+      <span class="pill" id="saved-pill">Saves automatically</span>
+      <span class="pill" id="game-pill">Saved on this device</span>
+      <span class="developer-only hidden" id="problems"></span>
       <span id="okmsg"></span>
     </div>
   </header>
 
   <nav class="bottom-nav">
-    <button id="tab-events" class="active" onclick="showView('events')">Events</button>
-    <button id="tab-write" onclick="openWriteView()">Write</button>
-    <button id="tab-links" onclick="showView('links')">Connect</button>
-    <button id="tab-lore" onclick="showView('lore')">Lore</button>
-    <button id="tab-export" onclick="showView('export')">Send</button>
+    <button id="tab-events" class="active" onclick="showView('events')">My Events</button>
+    <button id="tab-write" onclick="openWriteView()">Write Event</button>
+    <button class="developer-only hidden" id="tab-links" onclick="showView('links')">Developer Checks</button>
+    <button id="tab-lore" onclick="showView('lore')">World Notes</button>
+    <button id="tab-export" onclick="showView('export')">Send to Day</button>
   </nav>
 
   <section id="view-events" class="view active">
     <div class="panel create-panel">
       <div class="panel-title">
-        <h2>Event Board</h2>
+        <h2>My Events</h2>
         <span class="pill" id="event-count">0 events</span>
       </div>
       <p class="muted" id="board-create-help">Start here. Tap the button below to make the first event.</p>
       <button class="primary big-action" id="board-create-button" onclick="newEvent()">+ Create Your First Event</button>
       <div class="row hidden" id="event-tools" style="margin-top:12px">
         <div>
-          <label>Search titles, notes, lore, tags</label>
-          <input type="text" id="search" placeholder="relay, courier, faction, navigation..." oninput="renderEventList()">
+          <label>Search my events</label>
+          <input type="text" id="search" placeholder="Type a title or word..." oninput="renderEventList()">
         </div>
-        <div>
+        <div class="developer-only hidden" id="status-filter-wrap">
           <label>Filter by status</label>
           <select id="status-filter" onchange="renderEventList()">
             <option value="">All statuses</option>
@@ -403,13 +402,13 @@
   <section id="view-write" class="view">
     <div class="panel">
       <div class="panel-title">
-        <h2>How to Make an Event</h2>
+        <h2>Write Your Event</h2>
         <span class="pill">saves automatically</span>
       </div>
       <ol class="simple-steps">
         <li>Write the title and what happens.</li>
         <li>Write the button the player can choose and what happens next.</li>
-        <li>Tap <b>Save &amp; Create Another Event</b> below the choices.</li>
+        <li>Tap <b>Create Another Event</b> when you are done.</li>
       </ol>
       <p class="muted hidden" id="local-game-help">On the game PC, events marked Canon or Ready can be put directly into the game.</p>
       <p class="hint">If taps do nothing, this is opened inside an email/file preview. Open the live website link in Safari or Chrome.</p>
@@ -417,24 +416,24 @@
 
     <div class="panel">
       <div class="panel-title">
-        <h2>Event Draft</h2>
-        <button class="small danger" onclick="deleteCurrent()">Delete</button>
+        <h2>1. What Does the Player See?</h2>
+        <button class="small danger" onclick="deleteCurrent()">Delete Event</button>
       </div>
-      <label><b>Title</b></label>
+      <label><b>Event title</b></label>
       <input type="text" id="title" placeholder="The Lantern Signal" oninput="touch()">
 
-      <label><b>What happens in this event?</b></label>
+      <label><b>What does the player see?</b></label>
       <textarea id="body" placeholder="Plain English is fine. Example: A damaged courier is drifting beside a silent relay. Its crew offers a nav key if you restore the transmitter." oninput="touch()"></textarea>
 
-      <div class="row">
+      <div class="row developer-only hidden">
         <div>
           <label>Tags / topic labels</label>
           <input type="text" id="tags" placeholder="courier, relay, faction, navigation, not canon yet" oninput="touch()">
         </div>
       </div>
 
-      <details>
-        <summary>Event number and status (optional)</summary>
+      <details class="developer-only hidden">
+        <summary>Developer setup</summary>
         <div class="top-row">
           <div>
             <label><b>Event number</b> 1-899</label>
@@ -457,15 +456,15 @@
         </div>
       </details>
 
-      <details>
-        <summary>Advanced game placement (optional)</summary>
+      <details class="developer-only hidden">
+        <summary>Game placement</summary>
         <div class="row">
           <div>
-            <label>Where it appears</label>
+            <label>Where can this event appear?</label>
             <select id="appears_in" onchange="placementChanged()">
-              <option value="route">Route event (?)</option>
-              <option value="follow_up">Follow-up page only</option>
-              <optgroup label="Legacy pools (not placed by the current map)">
+              <option value="route">Anywhere as a random event</option>
+              <option value="follow_up">Only after another event</option>
+              <optgroup class="developer-only hidden" label="Developer-only old event types">
               <option value="neutral">Neutral beacon</option>
               <option value="hostile">Hostile beacon</option>
               <option value="hazard">Hazard beacon</option>
@@ -474,15 +473,15 @@
               <option value="empty">Empty beacon</option>
               </optgroup>
             </select>
-            <div class="hint">Use Route event for a random ? node. Use Follow-up page when another event links here.</div>
+            <div class="hint">Choose the second option when another event sends the player here.</div>
             <div class="hint hidden" id="route-fuel-warning" style="color:var(--bad)">Route events cannot use fuel. Clear the highlighted Fuel box below before installing this event.</div>
           </div>
-          <div>
+          <div class="developer-only hidden">
             <label>How often the game picks it</label>
             <input type="number" id="weight" min="1" max="99" value="10" oninput="touch()">
             <div class="hint">Leave this at 10. Higher means it appears more often in random runs.</div>
           </div>
-          <div>
+          <div class="developer-only hidden">
             <label>Map label override</label>
             <select id="map_label" onchange="touch()">
               <option value="">Use beacon type</option>
@@ -495,11 +494,11 @@
               <option value="outpost">Outpost</option>
             </select>
           </div>
-          <div>
+          <div class="developer-only hidden">
             <label>Only plays if crew remembers this tag</label>
             <input type="text" id="only_if_remembered" placeholder="helped_courier" oninput="touch()">
           </div>
-          <div>
+          <div class="developer-only hidden">
             <label>Otherwise play event #</label>
             <input type="number" id="otherwise" min="0" list="event-number-options" placeholder="0 means default empty beacon" oninput="touch()">
           </div>
@@ -509,11 +508,11 @@
 
     <div class="panel">
       <div class="panel-title">
-        <h2>Choices / Paths</h2>
+        <h2>2. What Can the Player Do?</h2>
       </div>
       <div class="row">
         <div>
-          <label><b>Number of choices</b></label>
+          <label><b>How many choices does the player have?</b></label>
           <select id="choice-count" onchange="setChoiceCount(this.value)">
             <option value="1">1 choice</option>
             <option value="2">2 choices</option>
@@ -521,40 +520,42 @@
             <option value="4">4 choices</option>
           </select>
         </div>
-        <div class="hint" style="align-self:end;padding-bottom:10px">Each choice is one button. A result can continue to another numbered event.</div>
+        <div class="hint" style="align-self:end;padding-bottom:10px">Each choice becomes a button the player can tap.</div>
       </div>
       <div id="choices"></div>
     </div>
 
     <div class="panel finish-panel">
-      <div class="panel-title"><h2>Done With This Event?</h2></div>
-      <p class="muted">It is already saved. Choose what you want to do next.</p>
+      <div class="panel-title"><h2>3. What Next?</h2></div>
+      <p class="muted">Your event is already saved.</p>
       <div class="cards">
-        <button class="primary big-action" onclick="newEvent()">Save &amp; Create Another Event</button>
-        <button onclick="saveAndShowEvents()">Save &amp; View My Events</button>
+        <button class="primary big-action" onclick="newEvent()">Create Another Event</button>
+        <button onclick="saveAndShowEvents()">Back to My Events</button>
       </div>
     </div>
 
     <div class="panel">
       <details>
-        <summary><b>Optional: Add Lore and Notes</b></summary>
-        <label><b>Lore for this event</b></label>
+        <summary><b>Optional: Add Story Notes</b></summary>
+        <label><b>World or character notes</b></label>
         <textarea id="lore" placeholder="Who lives here? What happened before the player arrived? What larger world fact does this reveal?" oninput="touch()"></textarea>
-        <label><b>Developer notes</b></label>
-        <textarea id="design_notes" placeholder="Anything the developer should know. Example: This should feel important, but I do not know the exact reward yet. Maybe it should unlock event 14 later." oninput="touch()"></textarea>
-        <label><b>Connection notes</b></label>
-        <textarea id="connection_notes" placeholder="Event 2 and 14 are connected because choosing the radio option in 2 remembers helped_courier; event 14 checks that tag. One result on 2 also leads to 16." oninput="touch()"></textarea>
+        <div class="developer-only hidden">
+          <label><b>Notes for Day</b></label>
+          <textarea id="design_notes" placeholder="Anything the developer should know. Example: This should feel important, but I do not know the exact reward yet. Maybe it should unlock event 14 later." oninput="touch()"></textarea>
+          <label><b>How this connects to other events</b></label>
+          <textarea id="connection_notes" placeholder="Event 2 and 14 are connected because choosing the radio option in 2 remembers helped_courier; event 14 checks that tag. One result on 2 also leads to 16." oninput="touch()"></textarea>
+        </div>
       </details>
     </div>
   </section>
 
-  <section id="view-links" class="view">
+  <section id="view-links" class="view developer-only hidden">
     <div class="panel">
       <div class="panel-title">
-        <h2>Connection Tracker</h2>
+        <h2>Developer Story Checks</h2>
         <button class="small" onclick="renderLinks()">Refresh</button>
       </div>
-      <p class="hint">This checks all saved events, not just the one open right now. It warns you if an event points to a missing event number or waits for a memory tag that nothing creates.</p>
+      <p class="hint">Developer-only checks for broken event links and game rules.</p>
     </div>
     <div id="links-output"></div>
   </section>
@@ -562,10 +563,10 @@
   <section id="view-lore" class="view">
     <div class="panel">
       <div class="panel-title">
-        <h2>World / Faction Notes</h2>
-        <button class="small good" onclick="touchWorld(true)">Save Lore</button>
+        <h2>World Notes</h2>
+        <span class="pill">saves automatically</span>
       </div>
-      <p class="muted">Use this for worldbuilding that is not tied to one event number. It autosaves in this browser and is included with <b>Share Everything</b>.</p>
+      <p class="muted">Keep names, places, groups, history, and other ideas here. These notes are included when you send everything to Day.</p>
       <label><b>Factions / groups</b></label>
       <button class="small" onclick="clearLoreField('factions')">Clear factions</button>
       <textarea id="world_factions" placeholder="Example: The Far Lanterns maintain isolated relay stations and charge every ship for safe-route coordinates." oninput="touchWorld()"></textarea>
@@ -578,24 +579,24 @@
       <label><b>History / what happened</b></label>
       <button class="small" onclick="clearLoreField('history')">Clear history</button>
       <textarea id="world_history" placeholder="Example: Ten years ago this station betrayed a refugee convoy. Event 12 is where that comes back." oninput="touchWorld()"></textarea>
-      <label><b>Loose lore notes</b></label>
-      <button class="small" onclick="clearLoreField('lore')">Clear loose notes</button>
+      <label><b>Other world notes</b></label>
+      <button class="small" onclick="clearLoreField('lore')">Clear this box</button>
       <textarea id="world_lore" placeholder="Any other worldbuilding, rules, recurring symbols, or background ideas." oninput="touchWorld()"></textarea>
-      <label><b>Questions for the developer</b></label>
+      <label><b>Questions for Day</b></label>
       <button class="small" onclick="clearLoreField('questions')">Clear questions</button>
       <textarea id="world_questions" placeholder="Can this faction have a store? Should this event be before or after the first boss? What mechanics are allowed here?" oninput="touchWorld()"></textarea>
       <label><b>Reusable names and ideas</b></label>
       <button class="small" onclick="clearLoreField('names')">Clear names</button>
       <textarea id="world_names" placeholder="Station names, crew names, radio phrases, relics, ship callsigns..." oninput="touchWorld()"></textarea>
       <div class="status-line">
-        <span class="pill" id="world-saved-pill">Lore autosaves here</span>
-        <button class="small danger" onclick="clearAllLore()">Clear all lore only</button>
+        <span class="pill" id="world-saved-pill">Notes save automatically</span>
+        <button class="small danger" onclick="clearAllLore()">Clear All World Notes</button>
       </div>
     </div>
   </section>
 
   <section id="view-export" class="view">
-    <div class="panel game-panel hidden" id="game-panel">
+    <div class="panel game-panel developer-only hidden" id="game-panel">
       <div class="panel-title">
         <h2>Put Ready Events in the Game</h2>
         <span class="pill" id="game-panel-status">Local game connected</span>
@@ -610,30 +611,30 @@
     </div>
 
     <div class="panel">
-      <div class="panel-title"><h2>Share Everything</h2></div>
-      <p class="muted">This sends <b>all saved events</b> at once. It does not send only the event currently open.</p>
+      <div class="panel-title"><h2>Send Everything to Day</h2></div>
+      <p class="muted">This shares every event and world note saved here.</p>
       <div class="cards">
-        <button class="primary" onclick="shareAllEvents()">Share Everything</button>
-        <button onclick="copyAllEventsPlain()">Copy Everything</button>
-        <button onclick="emailAllEventsPlain()">Open Email With Everything</button>
+        <button class="primary" onclick="shareAllEvents()">Send Everything to Day</button>
+        <button onclick="copyAllEventsPlain()">Copy All Event Text</button>
+        <button onclick="emailAllEventsPlain()">Email Everything to Day</button>
       </div>
-      <p class="hint">On a phone, tap Share Everything and choose Mail, Messages, or another app. If that does not work, tap Copy Everything and paste it where you need it.</p>
+      <p class="hint">On a phone, tap Send Everything to Day and choose Mail, Messages, or another app. If that does not work, copy the text and paste it into a message.</p>
     </div>
 
     <details class="panel">
-      <summary>Advanced: files and backups</summary>
+      <summary>Backup or Restore (optional)</summary>
       <div class="cards">
-        <button onclick="exportCurrentGameJson()">Download current event file</button>
-        <button onclick="copyCurrentGameJson()">Copy current event file text</button>
-        <button onclick="downloadAllGameJson()">Download game-ready files</button>
-        <button onclick="exportArchive()">Download full workspace backup</button>
-        <button onclick="document.getElementById('archive-file').click()">Import workspace or event JSON</button>
+        <button class="developer-only hidden" onclick="exportCurrentGameJson()">Download current event file</button>
+        <button class="developer-only hidden" onclick="copyCurrentGameJson()">Copy current event file text</button>
+        <button class="developer-only hidden" onclick="downloadAllGameJson()">Download game-ready files</button>
+        <button onclick="exportArchive()">Back Up Everything</button>
+        <button onclick="document.getElementById('archive-file').click()">Restore a Backup</button>
         <input id="archive-file" type="file" accept=".json" style="display:none" onchange="importFile(this)">
-        <button class="danger" onclick="clearWorkspace()">Clear this browser workspace</button>
+        <button class="danger" onclick="clearWorkspace()">Erase Everything Saved Here</button>
       </div>
-      <p class="hint">Use backup when moving devices or saving a full copy of the workspace. Game files are separate JSON files, one per event.</p>
+      <p class="hint">Make a backup before changing phones or clearing browser data.</p>
     </details>
-    <details class="panel">
+    <details class="panel developer-only hidden">
       <summary>Developer preview</summary>
       <pre id="json-preview">{}</pre>
     </details>
@@ -806,12 +807,26 @@ function nextFreeNumber() {
   return null;
 }
 
+function markLinkedEventsAsFollowUps() {
+  if (gameBridge.connected) return;
+  const targets = new Set();
+  Object.values(state.events).forEach(event => {
+    (event.choices || []).forEach(choice => (choice.outcomes || []).forEach(outcome => {
+      if (Number(outcome.leads_to) > 0) targets.add(String(Number(outcome.leads_to)));
+    }));
+  });
+  targets.forEach(number => {
+    if (state.events[number]) state.events[number].appears_in = "follow_up";
+  });
+}
+
 function newEvent() {
   if (!ensureCurrentSaved("starting a new event")) return;
   const n = nextFreeNumber();
   if (!n) return flash("No free event numbers", "The writer range 1-899 is full.");
   state.events[String(n)] = blankEvent(n);
   state.activeNumber = n;
+  markLinkedEventsAsFollowUps();
   persist();
   loadEvent(n);
   renderEventList();
@@ -854,7 +869,7 @@ function loadEvent(number) {
 
 function setActivePill() {
   const e = currentEvent();
-  document.getElementById("active-pill").textContent = e ? `Editing #${e.number} ${e.title || "(untitled)"}` : "No event selected";
+  document.getElementById("active-pill").textContent = e ? `Writing Event #${e.number}${e.title ? ": " + e.title : ""}` : "No event selected";
 }
 
 function currentEvent() {
@@ -932,6 +947,7 @@ function saveCurrent(opts = {}) {
   if (oldKey !== newKey) delete state.events[oldKey];
   state.events[newKey] = event;
   state.activeNumber = event.number;
+  markLinkedEventsAsFollowUps();
   persist();
   setActivePill();
   validateCurrent();
@@ -947,7 +963,7 @@ function ensureCurrentSaved(action) {
 }
 
 function touch() {
-  document.getElementById("saved-pill").textContent = "Unsaved changes";
+  document.getElementById("saved-pill").textContent = "Saving...";
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => saveCurrent({quiet: true}), 450);
   updatePlacementFields();
@@ -995,7 +1011,7 @@ function touchWorld(manual) {
   state.world.names = document.getElementById("world_names").value;
   persist();
   const pill = document.getElementById("world-saved-pill");
-  if (pill) pill.textContent = manual ? "Lore saved" : "Lore autosaved";
+  if (pill) pill.textContent = manual ? "Notes saved" : "Notes saved automatically";
 }
 
 function loadWorldForm() {
@@ -1008,7 +1024,7 @@ function loadWorldForm() {
   document.getElementById("world_questions").value = state.world.questions || "";
   document.getElementById("world_names").value = state.world.names || "";
   const pill = document.getElementById("world-saved-pill");
-  if (pill) pill.textContent = "Lore loaded from this browser";
+  if (pill) pill.textContent = "Notes loaded from this device";
 }
 
 function cleanTag(value) {
@@ -1023,13 +1039,13 @@ function addChoice(data, skipTouch) {
   const node = el(`
     <div class="choice" id="${id}">
       <div class="choice-head">
-        <strong>Choice</strong>
-        <button class="small danger" onclick="removeChoice('${id}')">Remove</button>
+        <strong>Player Choice</strong>
+        <button class="small danger" onclick="removeChoice('${id}')">Remove Choice</button>
       </div>
-      <label><b>Button text</b></label>
+      <label><b>What does the choice say?</b></label>
       <input type="text" class="c-text" placeholder="Restore the transmitter" oninput="touch()">
-      <details>
-        <summary>Advanced: game lock requirements</summary>
+      <details class="developer-only hidden">
+        <summary>Game requirements</summary>
         <div class="row">
           <div><label>Needs credits at least</label><input type="number" class="n-scrip" min="0" placeholder="0" oninput="touch()"></div>
           <div class="legacy-fuel"><label>Needs fuel at least</label><input type="number" class="n-fuel" min="0" placeholder="0" oninput="touch()"></div>
@@ -1041,7 +1057,7 @@ function addChoice(data, skipTouch) {
         </div>
       </details>
       <div class="outcomes"></div>
-      <button class="small" onclick="addOutcome('${id}')">Add Result</button>
+      <button class="small developer-only hidden" onclick="addOutcome('${id}')">Add Another Possible Result</button>
     </div>`);
   document.getElementById("choices").appendChild(node);
   if (data) {
@@ -1112,19 +1128,24 @@ function addOutcome(choiceId, data, skipTouch) {
   const box = el(`
     <div class="outcome">
       <div class="choice-head">
-        <strong>Result</strong>
-        <button class="small danger" onclick="this.closest('.outcome').remove(); touch();">Remove</button>
+        <strong>What Happens Next</strong>
+        <button class="small danger developer-only hidden" onclick="this.closest('.outcome').remove(); touch();">Remove Result</button>
       </div>
-      <div class="row">
-        <div><label>Follow-up event #</label><input type="number" class="o-leads" min="0" max="899" list="event-number-options" placeholder="16" oninput="touch()"></div>
-        <div><label>Memory tag for later</label><input type="text" class="o-remember" placeholder="helped_courier" oninput="touch()"></div>
-      </div>
-      <label><b>What happens after this choice?</b></label>
+      <label><b>What happens after the player chooses this?</b></label>
       <textarea class="o-result" placeholder="Plain English result. Example: The relay wakes and the courier transmits a safe route through the debris field." oninput="touch()"></textarea>
-      <label>Extra developer notes</label>
-      <textarea class="o-game-note" placeholder="Optional. Example: This should unlock a later station event. The exact reward can be tuned later." oninput="touch()"></textarea>
-      <details>
-        <summary>Advanced: game math (optional)</summary>
+      <div>
+        <label>Continue to event number (optional)</label>
+        <input type="number" class="o-leads" min="0" max="899" list="event-number-options" placeholder="Leave blank if this event ends" oninput="touch()">
+        <div class="hint">Leave this blank if the event ends here.</div>
+      </div>
+      <div class="developer-only hidden">
+        <label>Memory tag for later</label>
+        <input type="text" class="o-remember" placeholder="helped_courier" oninput="touch()">
+        <label>Extra developer notes</label>
+        <textarea class="o-game-note" placeholder="Optional. Example: This should unlock a later station event. The exact reward can be tuned later." oninput="touch()"></textarea>
+      </div>
+      <details class="developer-only hidden">
+        <summary>Game rewards and consequences</summary>
         <div class="row">
           <div><label>Chance weight</label><input type="number" class="o-chance" value="1" min="1" max="99" oninput="touch()"></div>
           <div><label>Credits +/-</label><input type="number" class="o-scrip" placeholder="0" oninput="touch()"></div>
@@ -1160,21 +1181,21 @@ function addOutcome(choiceId, data, skipTouch) {
 function eventProblems(event, allEvents = state.events) {
   const problems = [];
   if (!event.number || event.number < 1 || event.number > 899) problems.push("Event number must be 1-899.");
-  if (!event.title) problems.push("Needs a title.");
-  if (!event.body) problems.push("Needs player-facing event text.");
-  if (!event.choices || !event.choices.length) problems.push("Needs at least one choice.");
+  if (!event.title) problems.push("Add an event title.");
+  if (!event.body) problems.push("Write what the player sees.");
+  if (!event.choices || !event.choices.length) problems.push("Add at least one player choice.");
   const currentRoutePage = (event.appears_in || "route") === "route";
   if ((event.appears_in || "route") === "route" && event.map_label) problems.push("Route events always use the ? map label.");
   (event.choices || []).forEach((choice, ci) => {
-    if (!choice.text) problems.push(`Choice ${ci + 1} needs button text.`);
-    if (!choice.outcomes || !choice.outcomes.length) problems.push(`Choice ${ci + 1} needs at least one outcome.`);
+    if (!choice.text) problems.push(`Write the words for Choice ${ci + 1}.`);
+    if (!choice.outcomes || !choice.outcomes.length) problems.push(`Write what happens after Choice ${ci + 1}.`);
     if (currentRoutePage && choice.needs?.fuel) problems.push(`Choice ${ci + 1} cannot require fuel on the current route map.`);
     (choice.outcomes || []).forEach((outcome, oi) => {
-      if (!outcome.result) problems.push(`Choice ${ci + 1}, outcome ${oi + 1} needs result text.`);
+      if (!outcome.result) problems.push(`Write what happens after Choice ${ci + 1}.`);
       if (currentRoutePage && outcome.fuel) problems.push(`Choice ${ci + 1}, outcome ${oi + 1} cannot change fuel on the current route map.`);
       if (outcome.fight && outcome.leads_to) problems.push(`Choice ${ci + 1}, outcome ${oi + 1} cannot both start a fight and open a follow-up event.`);
       if (outcome.leads_to && !allEvents[String(outcome.leads_to)]) {
-        problems.push(`Choice ${ci + 1}, outcome ${oi + 1} leads to missing event #${outcome.leads_to}.`);
+        problems.push(`Choice ${ci + 1} continues to Event #${outcome.leads_to}, but that event has not been created yet.`);
       } else if (outcome.leads_to && GAME_READY_STATUSES.has(event.status) &&
           !GAME_READY_STATUSES.has(allEvents[String(outcome.leads_to)].status)) {
         problems.push(`Choice ${ci + 1}, outcome ${oi + 1} leads to event #${outcome.leads_to}, which is not Canon or Ready.`);
@@ -1200,7 +1221,7 @@ function validateCurrent() {
       outcome.result || outcome.remember || outcome.leads_to || outcome.game_note))
   );
   document.getElementById("problems").textContent = hasStarted ? problems.slice(0, 2).join(" ") : "";
-  document.getElementById("okmsg").textContent = hasStarted && !problems.length ? "Looks exportable." : "";
+  document.getElementById("okmsg").textContent = hasStarted && !problems.length ? "Ready to share." : "";
   return problems;
 }
 
@@ -1218,7 +1239,7 @@ function renderEventList() {
   document.getElementById("board-create-help").textContent = hasEvents
     ? "Open an event below to keep working, or create another one."
     : "Start here. Tap the button below to make the first event.";
-  document.getElementById("new-event-top").textContent = hasEvents ? "+ Another Event" : "+ Create Event";
+  document.getElementById("new-event-top").textContent = "+ New Event";
   updateEventNumberOptions(events);
   const filtered = events.filter(e => {
     if (filter && e.status !== filter) return false;
@@ -1227,7 +1248,7 @@ function renderEventList() {
   });
   if (!filtered.length) {
     const message = hasEvents
-      ? "No events match that search or filter."
+      ? "No events match that search."
       : "Nothing here yet. Tap Create Your First Event above.";
     list.appendChild(el(`<div class="panel"><p class="muted">${message}</p></div>`));
     return;
@@ -1235,19 +1256,21 @@ function renderEventList() {
   filtered.forEach(e => {
     const links = outgoingLinks(e).map(l => "#" + l.to).join(", ");
     const problems = eventProblems(e);
-    const card = el(`
-      <article class="event-card ${state.activeNumber === e.number ? "active" : ""}">
-        <h3>#${e.number || "?"} ${escapeHtml(e.title || "(untitled)")}</h3>
-        <p>${escapeHtml((e.body || "").slice(0, 140))}${(e.body || "").length > 140 ? "..." : ""}</p>
+    const developerDetails = gameBridge.connected ? `
         <div class="status-line">
           <span class="pill">${escapeHtml(statusLabel(e.status))}</span>
           <span class="pill">${escapeHtml(placementLabel(e.appears_in))}</span>
           ${links ? `<span class="pill">leads ${escapeHtml(links)}</span>` : ""}
           ${problems.length ? `<span class="pill" style="color:var(--bad)">needs work</span>` : `<span class="pill" style="color:var(--good)">valid</span>`}
-        </div>
+        </div>` : "";
+    const card = el(`
+      <article class="event-card ${state.activeNumber === e.number ? "active" : ""}">
+        <h3>#${e.number || "?"} ${escapeHtml(e.title || "Untitled Event")}</h3>
+        <p>${escapeHtml((e.body || "").slice(0, 140))}${(e.body || "").length > 140 ? "..." : ""}</p>
+        ${developerDetails}
         <div class="card-actions">
-          <button class="small primary" onclick="editEvent(${e.number})">Open &amp; Edit</button>
-          <button class="small" onclick="duplicateEvent(${e.number})">Duplicate</button>
+          <button class="small primary" onclick="editEvent(${e.number})">Continue Writing</button>
+          <button class="small" onclick="duplicateEvent(${e.number})">Make a Copy</button>
           <button class="small danger" onclick="deleteEventNumber(${e.number})">Delete</button>
         </div>
       </article>`);
@@ -1591,11 +1614,16 @@ function updateGameBridgeUi() {
   const panelStatus = document.getElementById("game-panel-status");
   const syncButton = document.getElementById("sync-all-button");
   const localHelp = document.getElementById("local-game-help");
+  document.querySelectorAll(".developer-only").forEach(node => {
+    node.classList.toggle("hidden", !gameBridge.connected);
+  });
   if (!gameBridge.connected) {
     pill.textContent = "Saved on this device";
     topButton.classList.add("hidden");
     panel.classList.add("hidden");
     localHelp?.classList.add("hidden");
+    if (currentView === "links") showView("events");
+    renderEventList();
     return;
   }
   pill.textContent = gameBridge.godotAvailable ? "Game folder connected" : "Game connected, Godot missing";
@@ -1605,6 +1633,7 @@ function updateGameBridgeUi() {
   topButton.disabled = !gameBridge.godotAvailable;
   syncButton.disabled = !gameBridge.godotAvailable;
   panelStatus.textContent = gameBridge.godotAvailable ? "Godot check ready" : "Set GODOT_BIN, then reopen";
+  renderEventList();
 }
 
 function routeChainFuelProblems(events) {
