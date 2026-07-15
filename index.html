@@ -1692,7 +1692,7 @@ async function syncAllToGame() {
     return flash("Current draft not saved", "Fix its event number before putting events in the game.");
   }
   if (!gameBridge.connected) {
-    return flash("Local launcher required", "Open <b>Open Event Studio.cmd</b> to write directly into the game. Browser-only mode can still download JSON files.");
+    return flash("Local launcher required", "Open <b>Open Event Studio.cmd</b> to write directly into the game. The public website can still share or back up events.");
   }
   if (!gameBridge.godotAvailable) {
     return flash("Godot 4.7 not found", "Set the GODOT_BIN environment variable to the Godot console executable, then reopen Event Studio.");
