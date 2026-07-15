@@ -16,22 +16,27 @@
 -->
 <style>
   :root {
-    --bg: #0e1112;
-    --panel: #171c1f;
-    --panel-2: #20282b;
-    --inset: #101416;
-    --line: #425054;
-    --line-soft: #2c3639;
-    --ink: #f0e4d3;
-    --muted: #ad9982;
-    --faint: #786b5d;
-    --copper: #c67a35;
-    --copper-2: #e3a25d;
-    --rail: #83936c;
-    --bad: #dc6048;
-    --good: #65b798;
-    --warn: #e0b14f;
-    --shadow: rgba(0,0,0,.35);
+    --bg: #070b17;
+    --panel: #11182b;
+    --panel-2: #17223a;
+    --inset: #0a1020;
+    --line: #52678d;
+    --line-soft: #2b3a59;
+    --ink: #f7f8ff;
+    --muted: #b9c5da;
+    --faint: #91a0ba;
+    --violet: #a98bff;
+    --violet-deep: #5b46c7;
+    --cyan: #67e8f9;
+    --pink: #fb7da8;
+    --amber: #ffc857;
+    --copper: var(--violet);
+    --copper-2: #c4b5fd;
+    --rail: var(--cyan);
+    --bad: #fb7185;
+    --good: #34d399;
+    --warn: #fbbf24;
+    --shadow: rgba(1,3,12,.48);
   }
   * { box-sizing: border-box; }
   body {
@@ -332,6 +337,299 @@
     .modal { align-items: center; padding: 16px; }
     .modal-card { border-radius: 12px; }
   }
+
+  /* Blackbird Nebula visual system */
+  body {
+    min-height: 100vh;
+    overflow-x: hidden;
+    background:
+      radial-gradient(circle at 8% -8%, rgba(169,139,255,.23), transparent 34rem),
+      radial-gradient(circle at 104% 18%, rgba(103,232,249,.14), transparent 30rem),
+      radial-gradient(circle at 55% 105%, rgba(52,211,153,.08), transparent 28rem),
+      linear-gradient(180deg, #090e1e 0%, var(--bg) 60%, #060914 100%);
+    background-attachment: fixed;
+    font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  button {
+    min-height: 46px;
+    border-radius: 11px;
+    background: linear-gradient(180deg, #1d2a48, #142039);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 3px 10px rgba(1,3,12,.13);
+    transition: filter .16s ease, transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+  }
+  button.primary {
+    color: #ffffff;
+    border-color: #ad9cff;
+    background: linear-gradient(135deg, #6752d5 0%, #287ba3 100%);
+    box-shadow: 0 8px 22px rgba(91,70,199,.28), inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  button.good {
+    color: #a7f3d0;
+    border-color: var(--good);
+    background: rgba(52,211,153,.1);
+  }
+  button.danger {
+    color: #fecdd3;
+    border-color: var(--bad);
+    background: rgba(251,113,133,.09);
+  }
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 3px solid rgba(103,232,249,.45);
+    outline-offset: 2px;
+  }
+  input[type=text], input[type=number], textarea, select {
+    min-height: 48px;
+    border-color: var(--line);
+    border-radius: 11px;
+    background: rgba(8,15,31,.9);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.22);
+  }
+  textarea { min-height: 126px; }
+  input::placeholder, textarea::placeholder {
+    color: #8091af;
+    opacity: 1;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--cyan);
+    outline-color: rgba(103,232,249,.42);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.22), 0 0 0 4px rgba(103,232,249,.07);
+  }
+  label { color: var(--muted); }
+  .app { padding: 0 12px 108px; }
+  header {
+    margin: 0 -12px 14px;
+    padding: 14px;
+    background:
+      radial-gradient(circle at 88% -20%, rgba(103,232,249,.13), transparent 15rem),
+      linear-gradient(180deg, rgba(14,21,43,.98), rgba(7,11,23,.96));
+    border-bottom-color: #354565;
+    box-shadow: 0 8px 28px var(--shadow);
+    backdrop-filter: blur(14px);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+  }
+  .brand-orb {
+    position: relative;
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 34% 28%, #ffffff 0 3%, transparent 4%),
+      radial-gradient(circle at 38% 32%, #bff5ff 0 9%, transparent 24%),
+      linear-gradient(135deg, #765df0 8%, #2fb8d6 60%, #34d399 100%);
+    box-shadow: 0 0 0 1px rgba(196,181,253,.6), 0 0 24px rgba(103,232,249,.34);
+  }
+  .brand-orb::after {
+    content: "";
+    position: absolute;
+    left: -6px;
+    right: -6px;
+    top: 17px;
+    height: 4px;
+    border: 1px solid rgba(255,255,255,.65);
+    border-radius: 50%;
+    transform: rotate(-18deg);
+    box-shadow: 0 0 10px rgba(103,232,249,.35);
+  }
+  h1 {
+    font-size: 22px;
+    letter-spacing: .35px;
+  }
+  @supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    h1 {
+      color: transparent;
+      background: linear-gradient(90deg, #ffffff, #d1c7ff 58%, #7cecff);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  }
+  .subtitle { color: var(--faint); font-size: 13px; }
+  .toolbar { margin-top: 12px; }
+  .toolbar button { min-height: 50px; }
+  .status-line { gap: 6px; }
+  .pill {
+    border-color: #405171;
+    background: rgba(8,15,31,.78);
+    color: var(--muted);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  #game-pill::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--good);
+    box-shadow: 0 0 8px rgba(52,211,153,.55);
+  }
+  .panel {
+    padding: 15px;
+    margin-bottom: 14px;
+    border-color: var(--line-soft);
+    border-radius: 15px;
+    background: linear-gradient(180deg, rgba(23,34,58,.95), rgba(17,24,43,.98));
+    box-shadow: 0 10px 28px rgba(1,3,12,.22), inset 0 1px 0 rgba(255,255,255,.035);
+  }
+  .panel-title { align-items: flex-start; }
+  .panel-title h2 { color: var(--copper-2); font-size: 17px; line-height: 1.25; }
+  .create-panel {
+    border-color: #8d7ce1;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(103,232,249,.14), transparent 16rem),
+      linear-gradient(135deg, rgba(91,70,199,.3), rgba(37,107,145,.14)),
+      var(--panel);
+    box-shadow: 0 14px 34px rgba(91,70,199,.18), inset 0 1px 0 rgba(255,255,255,.07);
+  }
+  .create-panel .panel-title h2 { color: #e8e3ff; }
+  .big-action { min-height: 56px; border-radius: 13px; }
+  .intro-panel {
+    border-color: #3a4d70;
+    background:
+      linear-gradient(135deg, rgba(169,139,255,.08), rgba(103,232,249,.04)),
+      var(--panel);
+  }
+  .simple-steps { color: var(--muted); }
+  .simple-steps li { margin: 7px 0; padding-left: 2px; }
+  .simple-steps li::marker { font-weight: 800; }
+  .simple-steps li:nth-child(1)::marker { color: var(--violet); }
+  .simple-steps li:nth-child(2)::marker { color: var(--cyan); }
+  .simple-steps li:nth-child(3)::marker { color: var(--good); }
+  .story-panel {
+    border-left: 4px solid var(--violet);
+    background: linear-gradient(135deg, rgba(169,139,255,.1), transparent 42%), var(--panel);
+  }
+  .story-panel .panel-title h2 { color: #c9bcff; }
+  .choice-panel {
+    border-left: 4px solid var(--cyan);
+    background: linear-gradient(135deg, rgba(103,232,249,.08), transparent 42%), var(--panel);
+  }
+  .choice-panel .panel-title h2 { color: var(--cyan); }
+  .finish-panel {
+    border-color: var(--good);
+    background: linear-gradient(135deg, rgba(52,211,153,.15), rgba(37,107,145,.1)), var(--panel);
+    box-shadow: 0 14px 34px rgba(52,211,153,.1), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .finish-panel .panel-title h2 { color: #9bf0cb; }
+  .notes-panel { border-color: #54467d; }
+  .world-panel {
+    border-top: 4px solid var(--pink);
+    background: linear-gradient(180deg, rgba(251,125,168,.09), transparent 9rem), var(--panel);
+  }
+  .world-panel .panel-title h2 { color: #ffabc8; }
+  .share-panel {
+    border-top: 4px solid var(--amber);
+    background: linear-gradient(180deg, rgba(255,200,87,.09), transparent 9rem), var(--panel);
+  }
+  .share-panel .panel-title h2 { color: #ffda87; }
+  .event-card {
+    padding: 14px;
+    border-color: var(--line-soft);
+    border-left: 4px solid var(--cyan);
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(103,232,249,.055), transparent 48%), var(--panel-2);
+    box-shadow: 0 7px 20px rgba(1,3,12,.16);
+  }
+  .event-card:nth-child(3n+2) { border-left-color: var(--violet); }
+  .event-card:nth-child(3n+3) { border-left-color: var(--pink); }
+  .event-card.active {
+    border-left-color: var(--amber);
+    box-shadow: 0 0 0 1px rgba(255,200,87,.68), 0 10px 24px rgba(255,200,87,.09);
+  }
+  .event-card h3 { font-size: 16px; color: #ffffff; }
+  .choice {
+    padding: 13px;
+    border-color: #455779;
+    border-left-color: var(--violet);
+    border-radius: 13px;
+    background: linear-gradient(135deg, rgba(169,139,255,.09), transparent 55%), var(--inset);
+  }
+  .choice-head strong { color: #c9bcff; }
+  .outcome {
+    padding: 13px;
+    border-color: #4d7592;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(103,232,249,.07), transparent 58%), rgba(10,16,32,.86);
+  }
+  .outcome .choice-head strong { color: var(--cyan); }
+  details { border-top-color: var(--line-soft); }
+  summary { color: var(--muted); padding: 2px 0; }
+  .bottom-nav {
+    left: 8px;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: auto;
+    gap: 6px;
+    padding: 6px;
+    border: 1px solid #354565;
+    border-radius: 16px;
+    background: rgba(7,11,23,.94);
+    box-shadow: 0 -8px 30px rgba(1,3,12,.4), inset 0 1px 0 rgba(255,255,255,.04);
+    backdrop-filter: blur(16px);
+  }
+  .bottom-nav button {
+    min-height: 58px;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--muted);
+  }
+  .bottom-nav button.active {
+    color: #ffffff;
+    background: linear-gradient(180deg, rgba(103,232,249,.16), rgba(91,70,199,.17));
+    box-shadow: inset 0 3px 0 var(--cyan), 0 5px 14px rgba(1,3,12,.15);
+  }
+  #tab-write.active { box-shadow: inset 0 3px 0 var(--violet), 0 5px 14px rgba(1,3,12,.15); }
+  #tab-lore.active { box-shadow: inset 0 3px 0 var(--pink), 0 5px 14px rgba(1,3,12,.15); }
+  #tab-export.active { box-shadow: inset 0 3px 0 var(--good), 0 5px 14px rgba(1,3,12,.15); }
+  .modal-card {
+    border-color: #435779;
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    box-shadow: 0 22px 70px rgba(0,0,0,.5);
+  }
+  @media (hover: hover) {
+    button:hover {
+      filter: brightness(1.12);
+      border-color: var(--cyan);
+      transform: translateY(-1px);
+    }
+    .event-card:hover { border-color: #51688f; }
+  }
+  @media (max-width: 759px) {
+    header {
+      position: relative;
+      top: auto;
+    }
+    .toolbar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      overflow: visible;
+    }
+    .toolbar button { width: 100%; }
+    #saved-pill { display: none; }
+    .card-actions .primary { flex: 1 0 100%; }
+    .card-actions button:not(.primary) { flex: 1 1 calc(50% - 4px); }
+  }
+  @media (min-width: 760px) {
+    .app { padding-bottom: 24px; }
+    .bottom-nav {
+      position: sticky;
+      top: 72px;
+      bottom: auto;
+      width: min(980px, calc(100vw - 24px));
+      max-width: 980px;
+      margin: 0 auto 14px;
+    }
+    .bottom-nav button { min-height: 48px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    button { transition: none; }
+  }
 </style>
 </head>
 <body>
@@ -343,8 +641,13 @@
 </noscript>
 <div class="app">
   <header>
-    <h1>Project Blackbird Event Studio</h1>
-    <p class="subtitle">Write one event at a time. Everything saves automatically.</p>
+    <div class="brand">
+      <span class="brand-orb" aria-hidden="true"></span>
+      <div>
+        <h1>Project Blackbird Event Studio</h1>
+        <p class="subtitle">Write one event at a time. Everything saves automatically.</p>
+      </div>
+    </div>
     <div class="toolbar">
       <button class="primary" id="new-event-top" onclick="newEvent()">+ New Event</button>
       <button class="primary developer-only hidden" id="sync-top" onclick="syncAllToGame()">Put Ready in Game</button>
@@ -400,7 +703,7 @@
   </section>
 
   <section id="view-write" class="view">
-    <div class="panel">
+    <div class="panel intro-panel">
       <div class="panel-title">
         <h2>Write Your Event</h2>
         <span class="pill">saves automatically</span>
@@ -414,7 +717,7 @@
       <p class="hint">If taps do nothing, this is opened inside an email/file preview. Open the live website link in Safari or Chrome.</p>
     </div>
 
-    <div class="panel">
+    <div class="panel story-panel">
       <div class="panel-title">
         <h2>1. What Does the Player See?</h2>
         <button class="small danger" onclick="deleteCurrent()">Delete Event</button>
@@ -506,7 +809,7 @@
       </details>
     </div>
 
-    <div class="panel">
+    <div class="panel choice-panel">
       <div class="panel-title">
         <h2>2. What Can the Player Do?</h2>
       </div>
@@ -534,7 +837,7 @@
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel notes-panel">
       <details>
         <summary><b>Optional: Add Story Notes</b></summary>
         <label><b>World or character notes</b></label>
@@ -561,7 +864,7 @@
   </section>
 
   <section id="view-lore" class="view">
-    <div class="panel">
+    <div class="panel world-panel">
       <div class="panel-title">
         <h2>World Notes</h2>
         <span class="pill">saves automatically</span>
@@ -610,7 +913,7 @@
       <p class="hint">The game loads event files when it starts. Restart the game after installing new events.</p>
     </div>
 
-    <div class="panel">
+    <div class="panel share-panel">
       <div class="panel-title"><h2>Send Everything to Day</h2></div>
       <p class="muted">This shares every event and world note saved here.</p>
       <div class="cards">
@@ -784,6 +1087,7 @@ function showView(name) {
   if (name === "links") renderLinks();
   if (name === "lore") loadWorldForm();
   if (name === "export") updatePreview();
+  window.scrollTo(0, 0);
   return true;
 }
 
