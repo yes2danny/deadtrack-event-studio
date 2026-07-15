@@ -347,10 +347,8 @@
     <p class="subtitle">Write one event at a time. Everything saves automatically.</p>
     <div class="toolbar">
       <button class="primary" id="new-event-top" onclick="newEvent()">+ Create Event</button>
-      <button class="good" onclick="saveCurrent()">Save This Event</button>
       <button class="primary hidden" id="sync-top" onclick="syncAllToGame()">Put Ready in Game</button>
       <button onclick="shareAllEvents()">Share All</button>
-      <button onclick="exportArchive()">Backup</button>
     </div>
     <div class="status-line">
       <span class="pill" id="active-pill">No event selected</span>
@@ -411,7 +409,7 @@
       <ol class="simple-steps">
         <li>Write the title and what happens.</li>
         <li>Write the button the player can choose and what happens next.</li>
-        <li>Tap <b>Save &amp; Create Another Event</b> at the bottom.</li>
+        <li>Tap <b>Save &amp; Create Another Event</b> below the choices.</li>
       </ol>
       <p class="muted hidden" id="local-game-help">On the game PC, events marked Canon or Ready can be put directly into the game.</p>
       <p class="hint">If taps do nothing, this is opened inside an email/file preview. Open the live website link in Safari or Chrome.</p>
@@ -422,27 +420,6 @@
         <h2>Event Draft</h2>
         <button class="small danger" onclick="deleteCurrent()">Delete</button>
       </div>
-      <div class="top-row">
-        <div>
-          <label><b>Event number</b> 1-899</label>
-          <input type="number" id="number" min="1" max="899" placeholder="2" oninput="touch()">
-        </div>
-        <div>
-          <label><b>Canon status</b></label>
-          <select id="status" onchange="touch()">
-            <option value="canon">Canon</option>
-            <option value="maybe_canon">Maybe canon</option>
-            <option value="idea">Loose idea</option>
-            <option value="not_canon">Not canon / parking lot</option>
-            <option value="needs_day">Needs developer decision</option>
-            <option value="draft">Draft</option>
-            <option value="ready">Ready for game</option>
-            <option value="needs_game_design">Needs game design</option>
-            <option value="needs_lore">Needs lore</option>
-          </select>
-        </div>
-      </div>
-
       <label><b>Title</b></label>
       <input type="text" id="title" placeholder="The Lantern Signal" oninput="touch()">
 
@@ -455,6 +432,30 @@
           <input type="text" id="tags" placeholder="courier, relay, faction, navigation, not canon yet" oninput="touch()">
         </div>
       </div>
+
+      <details>
+        <summary>Event number and status (optional)</summary>
+        <div class="top-row">
+          <div>
+            <label><b>Event number</b> 1-899</label>
+            <input type="number" id="number" min="1" max="899" placeholder="2" oninput="touch()">
+          </div>
+          <div>
+            <label><b>Canon status</b></label>
+            <select id="status" onchange="touch()">
+              <option value="canon">Canon</option>
+              <option value="maybe_canon">Maybe canon</option>
+              <option value="idea">Loose idea</option>
+              <option value="not_canon">Not canon / parking lot</option>
+              <option value="needs_day">Needs developer decision</option>
+              <option value="draft">Draft</option>
+              <option value="ready">Ready for game</option>
+              <option value="needs_game_design">Needs game design</option>
+              <option value="needs_lore">Needs lore</option>
+            </select>
+          </div>
+        </div>
+      </details>
 
       <details>
         <summary>Advanced game placement (optional)</summary>
@@ -525,16 +526,6 @@
       <div id="choices"></div>
     </div>
 
-    <div class="panel">
-      <div class="panel-title"><h2>Lore and Design Notes</h2></div>
-      <label><b>Lore for this event</b></label>
-      <textarea id="lore" placeholder="Who lives here? What happened before the player arrived? What larger world fact does this reveal?" oninput="touch()"></textarea>
-      <label><b>Developer notes</b></label>
-      <textarea id="design_notes" placeholder="Anything the developer should know. Example: This should feel important, but I do not know the exact reward yet. Maybe it should unlock event 14 later." oninput="touch()"></textarea>
-      <label><b>Connection notes</b></label>
-      <textarea id="connection_notes" placeholder="Event 2 and 14 are connected because choosing the radio option in 2 remembers helped_courier; event 14 checks that tag. One result on 2 also leads to 16." oninput="touch()"></textarea>
-    </div>
-
     <div class="panel finish-panel">
       <div class="panel-title"><h2>Done With This Event?</h2></div>
       <p class="muted">It is already saved. Choose what you want to do next.</p>
@@ -542,6 +533,18 @@
         <button class="primary big-action" onclick="newEvent()">Save &amp; Create Another Event</button>
         <button onclick="saveAndShowEvents()">Save &amp; View My Events</button>
       </div>
+    </div>
+
+    <div class="panel">
+      <details>
+        <summary><b>Optional: Add Lore and Notes</b></summary>
+        <label><b>Lore for this event</b></label>
+        <textarea id="lore" placeholder="Who lives here? What happened before the player arrived? What larger world fact does this reveal?" oninput="touch()"></textarea>
+        <label><b>Developer notes</b></label>
+        <textarea id="design_notes" placeholder="Anything the developer should know. Example: This should feel important, but I do not know the exact reward yet. Maybe it should unlock event 14 later." oninput="touch()"></textarea>
+        <label><b>Connection notes</b></label>
+        <textarea id="connection_notes" placeholder="Event 2 and 14 are connected because choosing the radio option in 2 remembers helped_courier; event 14 checks that tag. One result on 2 also leads to 16." oninput="touch()"></textarea>
+      </details>
     </div>
   </section>
 
@@ -1191,8 +1194,13 @@ function validateCurrent() {
   if (!state.activeNumber) return;
   const event = collectCurrent();
   const problems = eventProblems(event);
-  document.getElementById("problems").textContent = problems.slice(0, 2).join(" ");
-  document.getElementById("okmsg").textContent = problems.length ? "" : "Looks exportable.";
+  const hasStarted = Boolean(
+    event.title || event.body || event.tags || event.lore || event.design_notes || event.connection_notes ||
+    (event.choices || []).some(choice => choice.text || (choice.outcomes || []).some(outcome =>
+      outcome.result || outcome.remember || outcome.leads_to || outcome.game_note))
+  );
+  document.getElementById("problems").textContent = hasStarted ? problems.slice(0, 2).join(" ") : "";
+  document.getElementById("okmsg").textContent = hasStarted && !problems.length ? "Looks exportable." : "";
   return problems;
 }
 
