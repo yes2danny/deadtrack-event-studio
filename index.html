@@ -155,6 +155,27 @@
     background: var(--inset);
   }
   .cards { display: grid; gap: 8px; }
+  .big-action {
+    width: 100%;
+    min-height: 52px;
+    font-size: 16px;
+  }
+  .create-panel {
+    border-color: var(--copper);
+    background: linear-gradient(135deg, var(--panel), #201a15);
+  }
+  .create-panel p { margin: 6px 0 12px; }
+  .finish-panel {
+    border-color: var(--copper);
+    text-align: center;
+  }
+  .finish-panel .cards { margin-top: 10px; }
+  .simple-steps {
+    margin: 8px 0 0;
+    padding-left: 22px;
+    color: var(--muted);
+  }
+  .simple-steps li { margin: 5px 0; }
   .hidden { display: none !important; }
   .game-panel { border-color: var(--good); }
   .game-panel .panel-title h2 { color: var(--good); }
@@ -323,10 +344,10 @@
 <div class="app">
   <header>
     <h1>Project Blackbird Event Studio</h1>
-    <p class="subtitle">Write linked events, keep the story organized, and put finished files straight into the game.</p>
+    <p class="subtitle">Write one event at a time. Everything saves automatically.</p>
     <div class="toolbar">
-      <button class="primary" onclick="newEvent()">New Event</button>
-      <button class="good" onclick="saveCurrent()">Save Draft</button>
+      <button class="primary" id="new-event-top" onclick="newEvent()">+ Create Event</button>
+      <button class="good" onclick="saveCurrent()">Save This Event</button>
       <button class="primary hidden" id="sync-top" onclick="syncAllToGame()">Put Ready in Game</button>
       <button onclick="shareAllEvents()">Share All</button>
       <button onclick="exportArchive()">Backup</button>
@@ -349,12 +370,14 @@
   </nav>
 
   <section id="view-events" class="view active">
-    <div class="panel">
+    <div class="panel create-panel">
       <div class="panel-title">
         <h2>Event Board</h2>
         <span class="pill" id="event-count">0 events</span>
       </div>
-      <div class="row">
+      <p class="muted" id="board-create-help">Start here. Tap the button below to make the first event.</p>
+      <button class="primary big-action" id="board-create-button" onclick="newEvent()">+ Create Your First Event</button>
+      <div class="row hidden" id="event-tools" style="margin-top:12px">
         <div>
           <label>Search titles, notes, lore, tags</label>
           <input type="text" id="search" placeholder="relay, courier, faction, navigation..." oninput="renderEventList()">
@@ -382,12 +405,15 @@
   <section id="view-write" class="view">
     <div class="panel">
       <div class="panel-title">
-        <h2>Start Here</h2>
-        <span class="pill">autosaved in this browser</span>
+        <h2>How to Make an Event</h2>
+        <span class="pill">saves automatically</span>
       </div>
-      <p class="muted">Give each idea a number, write the scene, and add the buttons the player can choose. Event Studio already speaks the exact JSON format the game loads.</p>
-      <p class="muted"><b>Events</b> is the dashboard. <b>Write</b> edits one event. <b>Connect</b> checks story links. <b>Lore</b> keeps world notes. <b>Send</b> shares or installs the finished files.</p>
-      <p class="muted">When the local launcher is connected, <b>Put in Game</b> writes events marked Canon or Ready for game into <code>data/events</code> and runs the real game check. Restart the game if it is already open.</p>
+      <ol class="simple-steps">
+        <li>Write the title and what happens.</li>
+        <li>Write the button the player can choose and what happens next.</li>
+        <li>Tap <b>Save &amp; Create Another Event</b> at the bottom.</li>
+      </ol>
+      <p class="muted hidden" id="local-game-help">On the game PC, events marked Canon or Ready can be put directly into the game.</p>
       <p class="hint">If taps do nothing, this is opened inside an email/file preview. Open the live website link in Safari or Chrome.</p>
     </div>
 
@@ -507,6 +533,15 @@
       <textarea id="design_notes" placeholder="Anything the developer should know. Example: This should feel important, but I do not know the exact reward yet. Maybe it should unlock event 14 later." oninput="touch()"></textarea>
       <label><b>Connection notes</b></label>
       <textarea id="connection_notes" placeholder="Event 2 and 14 are connected because choosing the radio option in 2 remembers helped_courier; event 14 checks that tag. One result on 2 also leads to 16." oninput="touch()"></textarea>
+    </div>
+
+    <div class="panel finish-panel">
+      <div class="panel-title"><h2>Done With This Event?</h2></div>
+      <p class="muted">It is already saved. Choose what you want to do next.</p>
+      <div class="cards">
+        <button class="primary big-action" onclick="newEvent()">Save &amp; Create Another Event</button>
+        <button onclick="saveAndShowEvents()">Save &amp; View My Events</button>
+      </div>
     </div>
   </section>
 
@@ -776,7 +811,13 @@ function newEvent() {
   state.activeNumber = n;
   persist();
   loadEvent(n);
+  renderEventList();
   showView("write");
+}
+
+function saveAndShowEvents() {
+  if (!ensureCurrentSaved("viewing your events")) return;
+  showView("events");
 }
 
 function loadEvent(number) {
@@ -1162,7 +1203,14 @@ function renderEventList() {
   if (!list) return;
   list.innerHTML = "";
   const events = Object.values(state.events).sort((a,b) => (a.number || 0) - (b.number || 0));
-  document.getElementById("event-count").textContent = `${events.length} events`;
+  const hasEvents = events.length > 0;
+  document.getElementById("event-count").textContent = `${events.length} event${events.length === 1 ? "" : "s"}`;
+  document.getElementById("event-tools")?.classList.toggle("hidden", !hasEvents);
+  document.getElementById("board-create-button").textContent = hasEvents ? "+ Create Another Event" : "+ Create Your First Event";
+  document.getElementById("board-create-help").textContent = hasEvents
+    ? "Open an event below to keep working, or create another one."
+    : "Start here. Tap the button below to make the first event.";
+  document.getElementById("new-event-top").textContent = hasEvents ? "+ Another Event" : "+ Create Event";
   updateEventNumberOptions(events);
   const filtered = events.filter(e => {
     if (filter && e.status !== filter) return false;
@@ -1170,7 +1218,10 @@ function renderEventList() {
     return !q || hay.includes(q);
   });
   if (!filtered.length) {
-    list.appendChild(el(`<div class="panel"><p class="muted">No events yet. Choose New Event to start one.</p></div>`));
+    const message = hasEvents
+      ? "No events match that search or filter."
+      : "Nothing here yet. Tap Create Your First Event above.";
+    list.appendChild(el(`<div class="panel"><p class="muted">${message}</p></div>`));
     return;
   }
   filtered.forEach(e => {
@@ -1187,7 +1238,7 @@ function renderEventList() {
           ${problems.length ? `<span class="pill" style="color:var(--bad)">needs work</span>` : `<span class="pill" style="color:var(--good)">valid</span>`}
         </div>
         <div class="card-actions">
-          <button class="small primary" onclick="editEvent(${e.number})">Edit</button>
+          <button class="small primary" onclick="editEvent(${e.number})">Open &amp; Edit</button>
           <button class="small" onclick="duplicateEvent(${e.number})">Duplicate</button>
           <button class="small danger" onclick="deleteEventNumber(${e.number})">Delete</button>
         </div>
@@ -1531,15 +1582,18 @@ function updateGameBridgeUi() {
   const panel = document.getElementById("game-panel");
   const panelStatus = document.getElementById("game-panel-status");
   const syncButton = document.getElementById("sync-all-button");
+  const localHelp = document.getElementById("local-game-help");
   if (!gameBridge.connected) {
-    pill.textContent = "Browser-only mode";
+    pill.textContent = "Saved on this device";
     topButton.classList.add("hidden");
     panel.classList.add("hidden");
+    localHelp?.classList.add("hidden");
     return;
   }
   pill.textContent = gameBridge.godotAvailable ? "Game folder connected" : "Game connected, Godot missing";
   topButton.classList.remove("hidden");
   panel.classList.remove("hidden");
+  localHelp?.classList.remove("hidden");
   topButton.disabled = !gameBridge.godotAvailable;
   syncButton.disabled = !gameBridge.godotAvailable;
   panelStatus.textContent = gameBridge.godotAvailable ? "Godot check ready" : "Set GODOT_BIN, then reopen";
