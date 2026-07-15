@@ -1551,10 +1551,8 @@ function renderEventList() {
     return !q || hay.includes(q);
   });
   if (!filtered.length) {
-    const message = hasEvents
-      ? "No events match that search."
-      : "Nothing here yet. Tap Create Your First Event above.";
-    list.appendChild(el(`<div class="panel"><p class="muted">${message}</p></div>`));
+    if (!hasEvents) return;
+    list.appendChild(el(`<div class="panel"><p class="muted">No events match that search.</p></div>`));
     return;
   }
   filtered.forEach(e => {
